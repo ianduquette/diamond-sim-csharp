@@ -1,0 +1,23 @@
+{
+    // Core formatting
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-dotnettools.csharp",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    // C# style preferences
+    "dotnet.defaultSolution": "DiamondSim.sln",
+    "csharp.style.preferFileScopedNamespace": true,
+    "csharp_new_line_before_open_brace": "none",
+    "csharp_new_line_before_else": true,
+    "csharp_new_line_before_finally": true,
+    "csharp_new_line_before_members_in_object_initializers": false,
+    "csharp_new_line_before_members_in_anonymous_types": false,
+    "csharp_indent_case_contents": true,
+    "csharp_indent_switch_labels": true,
+
+    // Optional but nice
+    "csharp.format.enable": true,
+    "csharp.format.indentationSize": 4,
+    "csharp.format.newLine": "\n"
+}

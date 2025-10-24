@@ -1,0 +1,18 @@
+root = true
+
+[*.cs]
+# Use file-scoped namespaces
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# K&R braces: put the { on the same line
+csharp_new_line_before_open_brace = none
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+# Indentation/cleanup
+csharp_indent_case_contents = true
+csharp_indent_switch_labels = true
+insert_final_newline = true
+end_of_line = lf
+trim_trailing_whitespace = true

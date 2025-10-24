@@ -1,0 +1,46 @@
+# Build and output
+bin/
+obj/
+out/
+
+# User-specific
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
+
+# .NET tools
+*.dbmdl
+*.bak
+*.swp
+
+# Roo and agent state
+.roo/
+.roo_cache/
+.roo_tmp/
+.roo_logs/
+.roo_history/
+.roo_sessions/
+*.mdtm
+
+# Generated docs (if ephemeral)
+.prp/*_results*
+*.generated.md
+
+# Optional: ignore local PRD drafts (uncomment if you only commit final plans)
+# .prd/drafts/
+
+# Don’t ignore your intentional plan folders
+!.prp/
+!.prd/

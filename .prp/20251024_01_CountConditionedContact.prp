@@ -1,0 +1,57 @@
+# Count-Conditioned Contact
+
+## Goal
+
+Create a plan in `.prd/20251024_01_CountConditionedContact.md` to add **count awareness** to the baseball simulator.
+
+This feature should let the simulation adjust contact probability based on the current count (balls and strikes). For example, hitters should have a lower contact rate at 0–2 and higher at 2–0.
+
+## Context
+
+The project is a .NET 8 C# baseball simulator located in:
+- Library: `src/DiamondSim/`
+- Tests: `tests/DiamondSim.Tests/`
+It currently simulates pitch-by-pitch outcomes between average batters and pitchers.
+
+The existing test `AtBatTests` validates contact rates between 0.70 and 0.85 for neutral counts.
+
+## Scope
+
+- Introduce a `GameState` class to track balls and strikes.
+- Extend `GameEngine` with an overload of `SimulatePitchContact` that accepts `(balls, strikes)`.
+- Use the existing `Probabilities.CountContactAdjust` to apply count-based adjustments.
+- Add a new NUnit test verifying monotonic contact trends:
+  - 0–2 count → lowest contact
+  - 0–0 count → baseline
+  - 2–0 count → highest contact
+- Keep all current tests green.
+
+## Expected output
+
+A new file `.prd/20251024_01_CountConditionedContact.md` containing:
+
+1. **Feature overview** — what this adds and why it matters.  
+2. **Design outline** — affected files, new functions/classes, test additions.  
+3. **Acceptance criteria** — how to confirm it works (tests, deterministic behavior).  
+4. **Risks and notes** — flakiness, RNG seeding, or realism tuning.
+
+## Repo structure
+
+```
+diamond-sim-csharp/
+├─ src/DiamondSim/
+│  ├─ Models.cs
+│  ├─ Probabilities.cs
+│  ├─ GameEngine.cs
+│  └─ (new) GameState.cs
+├─ tests/DiamondSim.Tests/
+│  ├─ AtBatTests.cs
+│  └─ (new) CountContactTests.cs
+└─ .prd/
+   └─ 20251024_01_CountConditionedContact.md
+```
+
+## Additional instructions
+
+- IMPORTANT: correct me if I’m wrong.  
+- Do not modify code yet — only generate the `.prd` file with a full written plan.
