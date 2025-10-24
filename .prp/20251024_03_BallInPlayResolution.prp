@@ -1,0 +1,42 @@
+# Ball-In-Play Resolution (PRD only)
+
+> Include .prp/dotnet_project_rules.prp
+> Follow `.rules/style.md` and `.rules/testing.md`
+> Create the PRD only; do **not** edit code or tests in this step
+
+## Goal
+Create a plan in `.prd/20251024_03_BallInPlayResolution.md` to resolve **BallInPlay** outcomes into: **Out, Single, Double, Triple, HomeRun**, influenced by batter Power and pitcher Stuff, with realistic aggregate distributions.
+
+## Context
+- Project: .NET 8 C# baseball simulator
+- Completed: Part 1 (count-conditioned contact), Part 2 (at-bat loop producing BallInPlay terminals)
+- Location:
+  - Library: `src/DiamondSim/`
+  - Tests: `tests/DiamondSim.Tests/`
+
+## Scope
+- Define `BipOutcome` enum: `Out, Single, Double, Triple, HomeRun`
+- Specify a `BallInPlayResolver` component in the PRD (later implemented) that:
+  - Uses batter **Power** and pitcher **Stuff** to tilt outcome probabilities
+  - Produces deterministic results with injected `IRandomSource`
+  - Is table-driven; no physics
+- Testing targets for **average vs average** over **10,000 BIP** (seeded):
+  - HR% ∈ [0.03, 0.05]
+  - 2B% ∈ [0.16, 0.22]
+  - 3B% ∈ [0.002, 0.006]
+  - Singles% ∈ [0.60, 0.70]
+  - BABIP ≈ 0.29 ± 0.03 (i.e., hits / balls-in-play ignoring HR if you prefer traditional BABIP; PRD should choose and be consistent)
+  - Remainder is outs
+- The PRD must describe how to compute these metrics and which variants (BABIP including or excluding HR) are used.
+
+## Expected Output
+Create `.prd/20251024_03_BallInPlayResolution.md` with:
+1) **Feature overview** — purpose and fit after the at-bat loop
+2) **Design outline** — enums, resolver API, probability tables/curves, seed usage
+3) **Distribution targets** — explicit numeric ranges as above, with trial count = 10,000
+4) **Acceptance criteria** — deterministic seeded tests pass; existing tests remain green
+5) **Risks/notes** — tuning knobs, variance handling, CI runtime considerations
+
+## Additional Instructions
+- IMPORTANT: correct me if I’m wrong
+- Stop after writing the PRD; do not modify source code or tests

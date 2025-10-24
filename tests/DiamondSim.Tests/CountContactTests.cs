@@ -156,13 +156,19 @@ public class CountContactTests {
         Assert.That(validState.Balls, Is.EqualTo(2));
         Assert.That(validState.Strikes, Is.EqualTo(1));
 
-        // Assert - Invalid balls should throw
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: -1, strikes: 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 4, strikes: 0));
+        // Assert - Terminal states (4 balls, 3 strikes) are now valid for at-bat simulation
+        var walkState = new GameState(balls: 4, strikes: 0);
+        Assert.That(walkState.Balls, Is.EqualTo(4));
+        var strikeoutState = new GameState(balls: 0, strikes: 3);
+        Assert.That(strikeoutState.Strikes, Is.EqualTo(3));
 
-        // Assert - Invalid strikes should throw
+        // Assert - Invalid balls should throw (negative or > 4)
+        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: -1, strikes: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 5, strikes: 0));
+
+        // Assert - Invalid strikes should throw (negative or > 3)
         Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 0, strikes: -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 0, strikes: 3));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 0, strikes: 4));
     }
 
     [Test]
@@ -172,8 +178,10 @@ public class CountContactTests {
         Assert.That(new GameState(2, 1).IsComplete(), Is.False);
         Assert.That(new GameState(3, 2).IsComplete(), Is.False);
 
-        // Note: GameState validation prevents 4 balls or 3 strikes in constructor
-        // IsComplete() is designed for future use when counts can reach these values
+        // Assert - Terminal states are complete
+        Assert.That(new GameState(4, 0).IsComplete(), Is.True, "4 balls (walk) should be complete");
+        Assert.That(new GameState(0, 3).IsComplete(), Is.True, "3 strikes (strikeout) should be complete");
+        Assert.That(new GameState(4, 2).IsComplete(), Is.True, "4 balls with 2 strikes should be complete");
     }
 
     [Test]

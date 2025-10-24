@@ -5,14 +5,14 @@ namespace DiamondSim;
 /// </summary>
 public class GameState {
     /// <summary>
-    /// Gets the number of balls in the current count (0-3).
+    /// Gets or sets the number of balls in the current count (0-4).
     /// </summary>
-    public int Balls { get; }
+    public int Balls { get; set; }
 
     /// <summary>
-    /// Gets the number of strikes in the current count (0-2).
+    /// Gets or sets the number of strikes in the current count (0-3).
     /// </summary>
-    public int Strikes { get; }
+    public int Strikes { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GameState"/> class.
@@ -23,12 +23,12 @@ public class GameState {
     /// Thrown when balls is not in range 0-3 or strikes is not in range 0-2.
     /// </exception>
     public GameState(int balls, int strikes) {
-        if (balls < 0 || balls > 3) {
-            throw new ArgumentOutOfRangeException(nameof(balls), balls, "Balls must be between 0 and 3.");
+        if (balls < 0 || balls > 4) {
+            throw new ArgumentOutOfRangeException(nameof(balls), balls, "Balls must be between 0 and 4.");
         }
 
-        if (strikes < 0 || strikes > 2) {
-            throw new ArgumentOutOfRangeException(nameof(strikes), strikes, "Strikes must be between 0 and 2.");
+        if (strikes < 0 || strikes > 3) {
+            throw new ArgumentOutOfRangeException(nameof(strikes), strikes, "Strikes must be between 0 and 3.");
         }
 
         Balls = balls;
@@ -71,5 +71,43 @@ public class GameState {
     /// <returns>A hash code for the current GameState.</returns>
     public override int GetHashCode() {
         return HashCode.Combine(Balls, Strikes);
+    }
+
+    /// <summary>
+    /// Determines whether the current count represents a walk (4 balls).
+    /// </summary>
+    /// <returns><c>true</c> if the count is 4 balls; otherwise, <c>false</c>.</returns>
+    public bool IsWalk() => Balls >= 4;
+
+    /// <summary>
+    /// Determines whether the current count represents a strikeout (3 strikes).
+    /// </summary>
+    /// <returns><c>true</c> if the count is 3 strikes; otherwise, <c>false</c>.</returns>
+    public bool IsStrikeout() => Strikes >= 3;
+
+    /// <summary>
+    /// Determines whether the current count represents a terminal state (walk or strikeout).
+    /// </summary>
+    /// <returns><c>true</c> if the count is a walk or strikeout; otherwise, <c>false</c>.</returns>
+    public bool IsTerminal() => IsWalk() || IsStrikeout();
+
+    /// <summary>
+    /// Increments the ball count by one.
+    /// </summary>
+    public void IncrementBalls() => Balls++;
+
+    /// <summary>
+    /// Increments the strike count by one.
+    /// </summary>
+    public void IncrementStrikes() => Strikes++;
+
+    /// <summary>
+    /// Increments the strike count by one, but only if strikes is less than 2.
+    /// This implements the foul ball rule where a foul ball cannot create a third strike.
+    /// </summary>
+    public void IncrementStrikesSafe() {
+        if (Strikes < 2) {
+            Strikes++;
+        }
     }
 }

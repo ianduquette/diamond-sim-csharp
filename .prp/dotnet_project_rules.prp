@@ -1,0 +1,28 @@
+# .NET Project Rules (Reusable)
+
+## Purpose
+These are global rules for DiamondSim. Include these at the top of any feature PRP.
+
+## Environment
+- Language: C# 12, .NET 8 (net8.0)
+- Test framework: **NUnit** only
+- Repo layout:
+  - Source: `src/DiamondSim/`
+  - Tests: `tests/DiamondSim.Tests/`
+- Style guides: follow `.rules/style.md` and `.rules/testing.md`
+
+## Conventions
+- Namespaces: file-scoped (`namespace DiamondSim;`)
+- Braces: K&R (opening brace on the same line)
+- Deterministic tests: always use `SeededRandom(<constant>)`
+- Do not change target frameworks or add packages unless asked
+- Keep diffs small; do not rename/move existing files without explicit instruction
+- Build/test commands:
+  - `dotnet restore`
+  - `dotnet build`
+  - `dotnet test`
+
+## When implementing
+- Add tests first (TDD), then code
+- Do not weaken or delete existing tests
+- Respect `.editorconfig` and `.vscode/settings.json`
