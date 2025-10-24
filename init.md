@@ -19,3 +19,4 @@ dotnet add tests/DiamondSim.Tests/DiamondSim.Tests.csproj reference src/DiamondS
 # sanity check
 dotnet build
 dotnet test
+

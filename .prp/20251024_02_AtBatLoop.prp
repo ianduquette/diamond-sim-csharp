@@ -1,0 +1,60 @@
+# At-Bat Loop (K, BB, Ball-In-Play)
+
+## Goal
+
+Create a plan in `.prd/20251024_02_AtBatLoop.md` to add an **at-bat simulator** that loops pitch-by-pitch until a terminal outcome: **Strikeout**, **Walk**, or **BallInPlay**.
+
+## Context
+
+The project is a .NET 8 C# baseball simulator:
+- Library: `src/DiamondSim/`
+- Tests: `tests/DiamondSim.Tests/`
+
+Completed: **Count-conditioned contact** (Part 1).  
+Style rules and testing rules live in `.rules/style.md` and `.rules/testing.md` and **must be followed** (NUnit, file-scoped namespaces, K&R braces, deterministic tests).
+
+## Scope
+
+- Add **pitch-level outcomes** (: `PitchOutcome` enum) with values: `Ball`, `CalledStrike`, `SwingAndMiss`, `Foul`, `InPlay`.
+- Add **at-bat terminal** enum: `AtBatTerminal { Strikeout, Walk, BallInPlay }` and `AtBatResult` record for the terminal.
+- Implement an **AtBatSimulator** that:
+  - Uses existing contact logic plus `Probabilities.CountContactAdjust(balls, strikes)`.
+  - Chooses zone vs out-of-zone using pitcher **Control**.
+  - Chooses swing vs take using batter **Patience** (lower chase rate for patient hitters).
+  - Applies fouls (do not add a third strike).
+  - Updates a `GameState` count until terminal outcome.
+- Add NUnit tests that simulate many at-bats and verify distribution bands (average vs average):
+  - **K%:** 0.18–0.28
+  - **BB%:** 0.07–0.12
+  - **BIP%:** 0.55–0.70
+  - Totals sum to 100%.
+  - Use **10,000** at-bats for stability and `SeededRandom` for determinism.
+
+## Expected output
+
+A new file `.prd/20251024_02_AtBatLoop.md` containing:
+
+1. **Feature overview** — purpose of the at-bat simulator and how it fits the engine.  
+2. **Design outline** — new files/types, state transitions, and probability knobs.  
+3. **Distribution targets** — K/BB/BIP ranges for average vs average (10,000 trials).  
+4. **Acceptance criteria** — tests pass deterministically; original tests remain green.  
+5. **Risks/notes** — how constants can be tuned minimally to land in ranges.
+
+## Repo structure (resulting after implementation, not to be changed now)
+
+```
+diamond-sim-csharp/
+├─ src/DiamondSim/
+│  ├─ AtBatSimulator.cs
+│  ├─ Outcomes.cs
+│  └─ GameState.cs (already added in Part 1)
+├─ tests/DiamondSim.Tests/
+│  └─ AtBatLoopTests.cs
+└─ .prd/
+   └─ 20251024_02_AtBatLoop.md
+```
+
+## Additional instructions
+
+- IMPORTANT: correct me if I’m wrong.  
+- **Only** generate the `.prd` file with the full written plan. **Do not** modify code or tests yet.

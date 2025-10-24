@@ -13,7 +13,7 @@ public class AtBatTests {
         var batter = new Batter("B Average", BatterRatings.Average);
 
         // Act
-        var outcomes = engine.SimulateManyAtBats(batter, pitcher, trials: 1000);
+        var outcomes = engine.SimulateManyAtBats(batter, pitcher, trials: 10000);
 
         // Assert — MLB contact rate ~75–80%
         Assert.That(outcomes.ContactRate, Is.InRange(0.70, 0.85));
