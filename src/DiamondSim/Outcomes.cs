@@ -51,6 +51,44 @@ public enum AtBatTerminal {
 }
 
 /// <summary>
+/// Represents the specific outcome when a ball is put in play.
+/// </summary>
+public enum BipOutcome {
+    /// <summary>
+    /// Ball in play results in an out (fly out, ground out, line out).
+    /// </summary>
+    Out,
+
+    /// <summary>
+    /// Batter reaches first base safely.
+    /// </summary>
+    Single,
+
+    /// <summary>
+    /// Batter reaches second base safely.
+    /// </summary>
+    Double,
+
+    /// <summary>
+    /// Batter reaches third base safely.
+    /// </summary>
+    Triple,
+
+    /// <summary>
+    /// Batter circles all bases and scores.
+    /// </summary>
+    HomeRun
+}
+
+/// <summary>
+/// Represents the result of resolving a ball-in-play outcome.
+/// </summary>
+/// <param name="Outcome">The specific hit type or out.</param>
+public sealed record BipResult(
+    BipOutcome Outcome
+);
+
+/// <summary>
 /// Represents the complete result of a simulated at-bat.
 /// </summary>
 /// <param name="Terminal">The terminal outcome (Strikeout, Walk, or BallInPlay).</param>
