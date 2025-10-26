@@ -77,13 +77,13 @@ public class BallInPlayTests {
             $"BABIP should be 0.26-0.32, got {babip:F3}");
 
         // Output for debugging
-        TestContext.WriteLine($"Distribution for Average vs. Average (Power={power}, Stuff={stuff}):");
-        TestContext.WriteLine($"  Outs:     {outs,5} ({outPct:P2})");
-        TestContext.WriteLine($"  Singles:  {singles,5} ({singlePct:P2})");
-        TestContext.WriteLine($"  Doubles:  {doubles,5} ({doublePct:P2})");
-        TestContext.WriteLine($"  Triples:  {triples,5} ({triplePct:P2})");
-        TestContext.WriteLine($"  HomeRuns: {homeRuns,5} ({hrPct:P2})");
-        TestContext.WriteLine($"  BABIP:    {babip:F3}");
+        TestContext.Out.WriteLine($"Distribution for Average vs. Average (Power={power}, Stuff={stuff}):");
+        TestContext.Out.WriteLine($"  Outs:     {outs,5} ({outPct:P2})");
+        TestContext.Out.WriteLine($"  Singles:  {singles,5} ({singlePct:P2})");
+        TestContext.Out.WriteLine($"  Doubles:  {doubles,5} ({doublePct:P2})");
+        TestContext.Out.WriteLine($"  Triples:  {triples,5} ({triplePct:P2})");
+        TestContext.Out.WriteLine($"  HomeRuns: {homeRuns,5} ({hrPct:P2})");
+        TestContext.Out.WriteLine($"  BABIP:    {babip:F3}");
     }
 
     /// <summary>
@@ -117,8 +117,8 @@ public class BallInPlayTests {
             $"High Power should decrease Outs% (avg: {avgResults.OutPct:P2}, high: {highResults.OutPct:P2})");
 
         // Output for debugging
-        TestContext.WriteLine($"Average Power (50): HR={avgResults.HrPct:P2}, 2B={avgResults.DoublePct:P2}, Outs={avgResults.OutPct:P2}");
-        TestContext.WriteLine($"High Power (80):    HR={highResults.HrPct:P2}, 2B={highResults.DoublePct:P2}, Outs={highResults.OutPct:P2}");
+        TestContext.Out.WriteLine($"Average Power (50): HR={avgResults.HrPct:P2}, 2B={avgResults.DoublePct:P2}, Outs={avgResults.OutPct:P2}");
+        TestContext.Out.WriteLine($"High Power (80):    HR={highResults.HrPct:P2}, 2B={highResults.DoublePct:P2}, Outs={highResults.OutPct:P2}");
     }
 
     /// <summary>
@@ -148,8 +148,8 @@ public class BallInPlayTests {
             $"High Stuff should decrease BABIP (avg: {avgResults.Babip:F3}, high: {highResults.Babip:F3})");
 
         // Output for debugging
-        TestContext.WriteLine($"Average Stuff (50): Outs={avgResults.OutPct:P2}, BABIP={avgResults.Babip:F3}");
-        TestContext.WriteLine($"High Stuff (80):    Outs={highResults.OutPct:P2}, BABIP={highResults.Babip:F3}");
+        TestContext.Out.WriteLine($"Average Stuff (50): Outs={avgResults.OutPct:P2}, BABIP={avgResults.Babip:F3}");
+        TestContext.Out.WriteLine($"High Stuff (80):    Outs={highResults.OutPct:P2}, BABIP={highResults.Babip:F3}");
     }
 
     /// <summary>
@@ -181,8 +181,8 @@ public class BallInPlayTests {
             $"Low Power should increase Singles% of hits (avg: {avgSinglePctOfHits:P2}, low: {lowSinglePctOfHits:P2})");
 
         // Output for debugging
-        TestContext.WriteLine($"Average Power (50): HR={avgResults.HrPct:P2}, 1B%ofHits={avgSinglePctOfHits:P2}");
-        TestContext.WriteLine($"Low Power (20):     HR={lowResults.HrPct:P2}, 1B%ofHits={lowSinglePctOfHits:P2}");
+        TestContext.Out.WriteLine($"Average Power (50): HR={avgResults.HrPct:P2}, 1B%ofHits={avgSinglePctOfHits:P2}");
+        TestContext.Out.WriteLine($"Low Power (20):     HR={lowResults.HrPct:P2}, 1B%ofHits={lowSinglePctOfHits:P2}");
     }
 
     /// <summary>
@@ -212,8 +212,8 @@ public class BallInPlayTests {
             $"Low Stuff should increase BABIP (avg: {avgResults.Babip:F3}, low: {lowResults.Babip:F3})");
 
         // Output for debugging
-        TestContext.WriteLine($"Average Stuff (50): Outs={avgResults.OutPct:P2}, BABIP={avgResults.Babip:F3}");
-        TestContext.WriteLine($"Low Stuff (20):     Outs={lowResults.OutPct:P2}, BABIP={lowResults.Babip:F3}");
+        TestContext.Out.WriteLine($"Average Stuff (50): Outs={avgResults.OutPct:P2}, BABIP={avgResults.Babip:F3}");
+        TestContext.Out.WriteLine($"Low Stuff (20):     Outs={lowResults.OutPct:P2}, BABIP={lowResults.Babip:F3}");
     }
 
     /// <summary>
@@ -261,7 +261,7 @@ public class BallInPlayTests {
                 $"{name}: BABIP should be between 0.0 and 1.0");
 
             // Output for debugging
-            TestContext.WriteLine($"{name}: Outs={results.OutPct:P2}, BABIP={results.Babip:F3}, HR={results.HrPct:P2}");
+            TestContext.Out.WriteLine($"{name}: Outs={results.OutPct:P2}, BABIP={results.Babip:F3}, HR={results.HrPct:P2}");
         }
     }
 

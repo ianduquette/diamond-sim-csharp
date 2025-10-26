@@ -81,6 +81,86 @@ public enum BipOutcome {
 }
 
 /// <summary>
+/// Represents which half of an inning is being played.
+/// </summary>
+public enum InningHalf {
+    /// <summary>
+    /// The top half of the inning (away team batting).
+    /// </summary>
+    Top,
+
+    /// <summary>
+    /// The bottom half of the inning (home team batting).
+    /// </summary>
+    Bottom
+}
+
+/// <summary>
+/// Represents a team designation in the game.
+/// </summary>
+public enum Team {
+    /// <summary>
+    /// The away (visiting) team.
+    /// </summary>
+    Away,
+
+    /// <summary>
+    /// The home team.
+    /// </summary>
+    Home
+}
+
+/// <summary>
+/// Represents the type of plate appearance outcome.
+/// </summary>
+public enum PaType {
+    /// <summary>
+    /// Strikeout.
+    /// </summary>
+    K,
+
+    /// <summary>
+    /// Walk (base on balls).
+    /// </summary>
+    BB,
+
+    /// <summary>
+    /// Hit by pitch.
+    /// </summary>
+    HBP,
+
+    /// <summary>
+    /// Ball in play resulting in an out.
+    /// </summary>
+    InPlayOut,
+
+    /// <summary>
+    /// Single.
+    /// </summary>
+    Single,
+
+    /// <summary>
+    /// Double.
+    /// </summary>
+    Double,
+
+    /// <summary>
+    /// Triple.
+    /// </summary>
+    Triple,
+
+    /// <summary>
+    /// Home run.
+    /// </summary>
+    HomeRun,
+
+    /// <summary>
+    /// Reached base on error.
+    /// </summary>
+    ReachOnError
+}
+
+/// <summary>
 /// Represents the result of resolving a ball-in-play outcome.
 /// </summary>
 /// <param name="Outcome">The specific hit type or out.</param>

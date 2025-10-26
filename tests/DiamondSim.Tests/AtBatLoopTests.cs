@@ -68,9 +68,9 @@ public class AtBatLoopTests {
             $"K% + BB% + BIP% should equal 100%, got {total:P1}");
 
         // Output actual distributions for reference
-        TestContext.WriteLine($"Strikeout Rate: {kRate:P2} ({strikeouts}/{trials})");
-        TestContext.WriteLine($"Walk Rate: {bbRate:P2} ({walks}/{trials})");
-        TestContext.WriteLine($"Ball-In-Play Rate: {bipRate:P2} ({ballsInPlay}/{trials})");
+        TestContext.Out.WriteLine($"Strikeout Rate: {kRate:P2} ({strikeouts}/{trials})");
+        TestContext.Out.WriteLine($"Walk Rate: {bbRate:P2} ({walks}/{trials})");
+        TestContext.Out.WriteLine($"Ball-In-Play Rate: {bipRate:P2} ({ballsInPlay}/{trials})");
     }
 
     /// <summary>
@@ -104,7 +104,7 @@ public class AtBatLoopTests {
         Assert.That(bbRate, Is.LessThanOrEqualTo(0.10),
             $"High Control pitcher should have BB% ≤ 10%, got {bbRate:P1}");
 
-        TestContext.WriteLine($"High Control Pitcher Walk Rate: {bbRate:P2} ({walks}/{trials})");
+        TestContext.Out.WriteLine($"High Control Pitcher Walk Rate: {bbRate:P2} ({walks}/{trials})");
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public class AtBatLoopTests {
         Assert.That(kRate, Is.LessThanOrEqualTo(0.25),
             $"High Patience batter should have K% ≤ 25%, got {kRate:P1}");
 
-        TestContext.WriteLine($"High Patience Batter K%: {kRate:P2}, BB%: {bbRate:P2}");
+        TestContext.Out.WriteLine($"High Patience Batter K%: {kRate:P2}, BB%: {bbRate:P2}");
     }
 
     /// <summary>
@@ -180,7 +180,7 @@ public class AtBatLoopTests {
         Assert.That(kRate, Is.GreaterThanOrEqualTo(0.25),
             $"Low Contact batter should have K% ≥ 25%, got {kRate:P1}");
 
-        TestContext.WriteLine($"Low Contact Batter Strikeout Rate: {kRate:P2} ({strikeouts}/{trials})");
+        TestContext.Out.WriteLine($"Low Contact Batter Strikeout Rate: {kRate:P2} ({strikeouts}/{trials})");
     }
 
     /// <summary>
@@ -257,8 +257,8 @@ public class AtBatLoopTests {
         Assert.That(highPitchCountAtBats, Is.GreaterThan(0),
             "Should have some at-bats with >10 pitches (foul balls at 2 strikes)");
 
-        TestContext.WriteLine($"At-bats with >10 pitches: {highPitchCountAtBats}/{trials}");
-        TestContext.WriteLine($"Maximum pitch count observed: {maxPitchCount}");
+        TestContext.Out.WriteLine($"At-bats with >10 pitches: {highPitchCountAtBats}/{trials}");
+        TestContext.Out.WriteLine($"Maximum pitch count observed: {maxPitchCount}");
     }
 
     /// <summary>
@@ -296,6 +296,6 @@ public class AtBatLoopTests {
                 $"Walk should start with 4 balls, got {result.FinalCount}");
         }
 
-        TestContext.WriteLine($"Terminal: {result.Terminal}, Count: {result.FinalCount}, Pitches: {result.PitchCount}");
+        TestContext.Out.WriteLine($"Terminal: {result.Terminal}, Count: {result.FinalCount}, Pitches: {result.PitchCount}");
     }
 }

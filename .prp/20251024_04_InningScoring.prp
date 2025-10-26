@@ -1,0 +1,94 @@
+# Inning Scoring (PRD only)
+
+> Include .prp/dotnet_project_rules.prp
+> Follow `.rules/style.md` and `.rules/testing.md`
+> Create the PRD only; do **not** edit code or tests in this step
+
+## Goal
+Create a plan in `.prd/20251024_04_InningScoring.md` to apply resolved plate-appearance results
+(from 02/03) to the live game state: runs, outs, bases, half-inning transitions, walk-offs,
+and extras. No randomness here — purely deterministic bookkeeping.
+
+## Context
+- Project: .NET 8 C# baseball simulator
+- Completed:
+  - 01 – CountConditionedContact
+  - 02 – AtBatLoop (emits BallInPlay terminals)
+  - 03 – BallInPlayResolution (produces BipOutcome + advance payload)
+- Location:
+  - Library: `src/DiamondSim/`
+  - Tests: `tests/DiamondSim.Tests/`
+- Determinism: upstream RNG already decided outcomes.
+
+## Inputs
+- `GameState` snapshot before the PA:
+  - `inning:int (1..)`
+  - `half: Top|Bottom`
+  - `outs:int (0..2)`
+  - `bases:{on1, on2, on3: bool}`
+  - `score:{away:int, home:int}`
+  - `battingOrderIndex:{away:int, home:int} (0..8)`
+  - `offense: Away|Home`, `defense: Away|Home`
+  - `isFinal: bool`
+- `PaResolution` payload from 02/03:
+  - `outsAdded:int` (0|1|2)
+  - `runsScored:int` (includes batter on HR)
+  - `newBases:{on1,on2,on3:bool}`
+  - `type: K|BB|HBP|InPlayOut|Single|Double|Triple|HomeRun|ReachOnError`
+  - `flags:{isDoublePlay:bool, isSacFly:bool}` (present but optional for v0.2)
+
+## Outputs
+- Updated `GameState` with:
+  - new `score`, `outs`, `bases`, `battingOrderIndex`
+  - half/inning transitions (reset outs/bases on 3rd out; flip sides; advance inning)
+  - `isFinal` set on walk-off in Bottom 9+ or after completed extras
+- Line score buffer per team (runs by inning), flushed on half close
+- Log event emitted for the PA (before/after snapshot)
+
+## Transition Rules (authoritative)
+1. **Apply runs** to the batting side immediately using `runsScored`.
+2. **Apply outs**: `outs += outsAdded`.
+3. **Apply bases**: replace with `newBases`.
+4. **Advance lineup**: increment `battingOrderIndex[offense] = (idx + 1) % 9`.
+5. **Walk-off check**: If `half==Bottom && inning>=9 && score.home > score.away`, set `isFinal=true` and stop the half immediately (no further PAs).
+6. **Half close**: If `outs == 3`:
+   - record LOB = count of occupied bases at the moment of the 3rd out
+   - flush “runs this half” to the line score for the batting team
+   - reset `outs=0`, `bases=empty`
+   - `Top → Bottom` else `Bottom → Top` and `inning++`
+7. **Extras**: If tied after 9 full innings, continue alternating halves until a lead exists after a completed inning. Walk-off still applies in Bottom halves.
+8. **Accounting** (v0.2):
+   - Pitcher responsibility for runs = current pitcher (inherited runners handled later)
+   - All runs are earned for now (error model comes later)
+
+## Box/Line Score Tap (scoped for v0.2)
+- Define a “stat tap” that increments tallies per PA:
+  - Batters: `AB, H, 1B/2B/3B/HR, BB, HBP, K, RBI, R, PA, TB`
+  - Pitchers: `BF, outsRecorded (→ IP), H, R, ER, BB, HBP, K, HR`
+- Do not compute advanced rates (OPS, ERA) in-engine; leave to analysis.
+- Ensure sums: team hits = count of hit events; outs sum to 27 (or extras) per game.
+
+## Acceptance Criteria
+- **Deterministic**: Given same seed/config, the same PA log, score, and line score result.
+- **Walk-off correctness**: Bottom 9+ lead ends game immediately; partial inning line score is correct.
+- **Transitions**: On 3rd out, outs reset, bases clear, sides flip, line score flushed.
+- **Sum checks**:
+  - Team runs = sum of line-score innings
+  - Pitcher outs recorded across defenders = total outs made
+  - LOB tracked per half at the instant the half ends
+
+## Tests to Author (seeded)
+- Bottom 9th tie → solo HR walk-off ends game; LOB=0.
+- DP with 1 out ends the half; bases clear; line score flushes only that half’s runs.
+- Bases loaded walk adds 1 run; bases remain loaded; no outs change.
+- Extras continue until one side leads after a completed inning.
+
+## Risks / Notes
+- Inherited runners and earned‐run logic are deferred; keep interfaces ready for later.
+- Be strict about *flush on half close* vs *walk-off early end* to avoid off-by-one in line score.
+- No RNG calls in this module — violations should fail CI.
+
+## Expected Output
+Create `.prd/20251024_04_InningScoring.md` containing:
+- Overview, state diagram/pseudocode, precise rules above, test plan, and notes.
+- Mark dependency on `20251024_03_BallInPlayResolution`.
