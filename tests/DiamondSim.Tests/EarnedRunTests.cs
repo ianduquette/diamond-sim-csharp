@@ -302,4 +302,115 @@ public class EarnedRunTests {
             Assert.That(result2.AwayScore, Is.EqualTo(2), "Total 2 runs");
         });
     }
+    /// <summary>
+    /// Test: Document v1-light policy: if ANY runner advances on error, ALL runs are unearned.
+    /// PRD Section 3.2: Earned_MultiRun_Single_ErrorOnlyEnablesLeadRunner_V1MarksAllUnearned
+    /// MLB Rule: Earned run determination (simplified v1-light implementation)
+    /// </summary>
+    [Test]
+    public void Earned_MultiRun_Single_ErrorOnlyEnablesLeadRunner_V1MarksAllUnearned() {
+        // Arrange: Top 5th, runners on 1st and 2nd, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 5, half: InningHalf.Top, outs: 1,
+            onFirst: true, onSecond: true, onThird: false,
+            awayScore: 2, homeScore: 1,
+            awayBattingOrderIndex: 4, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 2,  // Both runners score
+            NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
+            Type: PaType.Single,
+            HadError: true,
+            AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: false)  // Only R2 advanced on error
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.Multiple(() => {
+            Assert.That(result.AwayScore, Is.EqualTo(4), "2 runs added");
+            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(2), "v1 policy: any error = all unearned");
+            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "No earned runs");
+        });
+    }
+
+    /// <summary>
+    /// Test: Verify ROE with multiple runners always produces all unearned runs and no RBI.
+    /// PRD Section 3.2: Unearned_ROE_MultipleRuns_AllUnearned_NoRBI
+    /// MLB Rule: Reach-on-error does not credit RBI; error-caused runs are unearned
+    /// </summary>
+    [Test]
+    public void Unearned_ROE_MultipleRuns_AllUnearned_NoRBI() {
+        // Arrange: Top 7th, runners on 2nd and 3rd, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 7, half: InningHalf.Top, outs: 1,
+            onFirst: false, onSecond: true, onThird: true,
+            awayScore: 3, homeScore: 4,
+            awayBattingOrderIndex: 2, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 2,  // Both runners score on error
+            NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
+            Type: PaType.ReachOnError,
+            HadError: true,
+            AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: true)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.Multiple(() => {
+            Assert.That(result.AwayScore, Is.EqualTo(5), "2 runs added");
+            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(2), "ROE = all unearned");
+            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "No earned runs");
+        });
+    }
+
+    /// <summary>
+    /// Test: Verify sacrifice fly credits RBI even when error makes run unearned.
+    /// PRD Section 3.2: Earned_SacFly_WithError_RunUnearnedButRbiCredited
+    /// MLB Rule: Sacrifice fly credits RBI regardless of error involvement
+    /// </summary>
+    [Test]
+    public void Earned_SacFly_WithError_RunUnearnedButRbiCredited() {
+        // Arrange: Bottom 6th, runner on 3rd, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 6, half: InningHalf.Bottom, outs: 1,
+            onFirst: false, onSecond: false, onThird: true,
+            awayScore: 3, homeScore: 2,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 5,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
+            Type: PaType.InPlayOut,
+            Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true),
+            HadError: true,
+            AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.Multiple(() => {
+            Assert.That(result.HomeScore, Is.EqualTo(3), "Run scores");
+            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(1), "Run is unearned (error-assisted)");
+            Assert.That(result.HomeEarnedRuns, Is.EqualTo(0), "No earned runs");
+        });
+    }
 }

@@ -896,6 +896,193 @@ public class InningScoreTests {
 
     #endregion
 
+    /// <summary>
+    /// Test: Triple play ends half immediately with correct LOB calculation.
+    /// PRD Section 3.3: TriplePlay_OutsAdded3_EndsHalf_LOBFromInstantOfThirdOut
+    /// MLB Rule: Three outs end half-inning; LOB counted at moment of final out
+    /// </summary>
+    [Test]
+    public void TriplePlay_OutsAdded3_EndsHalf_LOBFromInstantOfThirdOut() {
+        // Arrange: Top 4th, bases loaded, 0 outs
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 4, half: InningHalf.Top, outs: 0,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 2, homeScore: 1,
+            awayBattingOrderIndex: 6, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        // Need to record previous innings first (pattern from existing tests)
+        for (int i = 1; i <= 3; i++) {
+            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
+            _scorekeeper.LineScore.RecordInning(Team.Home, 0);
+        }
+
+        var resolution = new PaResolution(
+            OutsAdded: 3,  // Triple play
+            RunsScored: 0,
+            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true), // Bases still occupied at moment of 3rd out (for LOB calculation)
+            Type: PaType.InPlayOut,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.AwayScore, Is.EqualTo(2), "No runs");
+            Assert.That(snapshot.Outs, Is.EqualTo(0), "Outs reset");
+            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
+            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared");
+            Assert.That(snapshot.OnThird, Is.False, "Bases cleared");
+            Assert.That(snapshot.Half, Is.EqualTo(InningHalf.Bottom), "Transition to bottom");
+            Assert.That(snapshot.Inning, Is.EqualTo(4), "Still 4th inning");
+            Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(3), "LOB = 3 (bases loaded at 3rd out)");
+            // Line score flush verification: ensure runs recorded for away team in 4th inning
+            Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Away, 4), Is.EqualTo(0),
+                "Line score should show 0 runs for away in 4th (triple play, no runs scored)");
+        });
+    }
+
+    /// <summary>
+    /// Test: Home run in bottom 9th that doesn't win the game continues play.
+    /// PRD Section 3.3: NonWalkoffHomeRun_NotEnoughToWin_GameContinues
+    /// MLB Rule: Home run credits all runs; game continues if home team does not take the lead
+    /// </summary>
+    [Test]
+    public void NonWalkoffHomeRun_NotEnoughToWin_GameContinues() {
+        // Arrange: Bottom 9th, home down 3 (2-5), runner on 1st, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 1,
+            onFirst: true, onSecond: false, onThird: false,
+            awayScore: 5, homeScore: 2,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 4,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 2,  // Two-run HR, not enough to win
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
+            Type: PaType.HomeRun,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.HomeScore, Is.EqualTo(4), "All runs count for HR");
+            Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Still leading");
+            Assert.That(snapshot.IsFinal, Is.False, "Game continues");
+            Assert.That(snapshot.Outs, Is.EqualTo(1), "Outs unchanged");
+            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
+            Assert.That(snapshot.Half, Is.EqualTo(InningHalf.Bottom), "Still bottom 9th");
+        });
+    }
+
+    /// <summary>
+    /// Test: Skip-bottom-9th logic is independent of base state at end of top 9th.
+    /// PRD Section 3.3: SkipBottom9th_WithRunnersOnAtT9End_BasesDoNotAffectFinal
+    /// MLB Rule: Home team does not bat in bottom of 9th if leading after top half
+    /// </summary>
+    [Test]
+    public void SkipBottom9th_WithRunnersOnAtT9End_BasesDoNotAffectFinal() {
+        // Arrange: Top 9th, 2 outs, runners on 1st and 2nd, home leading 6-4
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Top, outs: 2,
+            onFirst: true, onSecond: true, onThird: false,
+            awayScore: 4, homeScore: 6,
+            awayBattingOrderIndex: 5, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        // Need to record previous innings first
+        for (int i = 0; i < 9; i++) {
+            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
+            if (i < 8) {
+                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
+            }
+        }
+
+        // Final out (strikeout)
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 0,
+            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: false),
+            Type: PaType.K,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.IsFinal, Is.True, "Game over (home leads)");
+            Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(2), "Away LOB = 2");
+            Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"), "Home 9th shows X");
+            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Final: Home 6");
+            Assert.That(snapshot.AwayScore, Is.EqualTo(4), "Final: Away 4");
+        });
+    }
+
+    /// <summary>
+    /// Test: Skip-bottom-9th with runner on 3rd at end of top 9th.
+    /// PRD Section 3.3: SkipBottom9th_HomeLeadsAfterT9_WithRunnerOnThird
+    /// MLB Rule: Home team does not bat in bottom of 9th if leading; base state at end of top 9th does not affect this rule
+    /// </summary>
+    [Test]
+    public void SkipBottom9th_HomeLeadsAfterT9_WithRunnerOnThird() {
+        // Arrange: Top 9th, 2 outs, runner on 3rd, home leading 5-3
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Top, outs: 2,
+            onFirst: false, onSecond: false, onThird: true,
+            awayScore: 3, homeScore: 5,
+            awayBattingOrderIndex: 8, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        // Need to record previous innings first
+        for (int i = 0; i < 9; i++) {
+            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
+            if (i < 8) {
+                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
+            }
+        }
+
+        // Final out
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 0,
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: true),
+            Type: PaType.InPlayOut,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.IsFinal, Is.True, "Game ends");
+            Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(1), "Away LOB = 1 (R3)");
+            Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"));
+            Assert.That(snapshot.HomeScore, Is.EqualTo(5));
+            Assert.That(snapshot.AwayScore, Is.EqualTo(3));
+        });
+    }
+
     #region Helper Methods
 
     /// <summary>

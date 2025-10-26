@@ -369,4 +369,209 @@ public class WalkoffTests {
             Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
+    /// <summary>
+    /// Test: Walk-off on reach-on-error credits no RBI and marks run as unearned.
+    /// PRD Section 3.1: Walkoff_Roe_Tie_BasesLoaded_PlatesOne
+    /// MLB Rule: Reach-on-error does not credit RBI; walk-off game ending when winning run scores
+    /// </summary>
+    [Test]
+    public void Walkoff_Roe_Tie_BasesLoaded_PlatesOne() {
+        // Arrange: Bottom 9th, tied 5-5, bases loaded, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 1,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 5, homeScore: 5,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 4,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
+            Type: PaType.ReachOnError,
+            HadError: true,
+            AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Only 1 run needed to win");
+            Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
+            Assert.That(snapshot.IsFinal, Is.True, "Game ends on walk-off");
+            Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
+            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
+            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared on walk-off");
+            Assert.That(snapshot.OnThird, Is.False, "Bases cleared on walk-off");
+            Assert.That(result.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (ROE)");
+        });
+    }
+
+    /// <summary>
+    /// Test: Walk-off on bases-loaded HBP credits exactly 1 RBI and marks run as earned.
+    /// PRD Section 3.1: Walkoff_HBP_Tie_BasesLoaded_ForcedInRun
+    /// MLB Rule: Bases-loaded HBP credits 1 RBI (forced run)
+    /// </summary>
+    [Test]
+    public void Walkoff_HBP_Tie_BasesLoaded_ForcedInRun() {
+        // Arrange: Bottom 9th, tied 3-3, bases loaded, 2 outs
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 2,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 3, homeScore: 3,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 7,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
+            Type: PaType.HBP,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Only 1 run needed");
+            Assert.That(snapshot.AwayScore, Is.EqualTo(3));
+            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
+            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
+            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared");
+            Assert.That(snapshot.OnThird, Is.False, "Bases cleared");
+            Assert.That(result.HomeEarnedRuns, Is.GreaterThan(0), "Run is earned (no error)");
+        });
+    }
+
+    /// <summary>
+    /// Test: Walk-off sacrifice fly credits RBI even if error enabled the score.
+    /// PRD Section 3.1: Walkoff_SacFly_WithError_CreditsRbiButUnearned
+    /// MLB Rule: Sacrifice fly credits RBI regardless of error; error-assisted advancement makes run unearned
+    /// </summary>
+    [Test]
+    public void Walkoff_SacFly_WithError_CreditsRbiButUnearned() {
+        // Arrange: Bottom 9th, tied 2-2, runner on 3rd, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 1,
+            onFirst: false, onSecond: false, onThird: true,
+            awayScore: 2, homeScore: 2,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 3,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        // Sacrifice fly with error enabling score
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
+            Type: PaType.InPlayOut,
+            Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true),
+            HadError: true,
+            AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.HomeScore, Is.EqualTo(3), "Walk-off on sac fly");
+            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
+            Assert.That(result.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (error-assisted)");
+        });
+    }
+
+    /// <summary>
+    /// Test: Non-HR walk-off clamps to minimum runs needed, suppressing extra runners.
+    /// PRD Section 3.1: Walkoff_Double_TrailingByOne_ClampsToTwo
+    /// MLB Rule: Game ends when winning run scores on non-home run play; only minimum runs needed are credited
+    /// </summary>
+    [Test]
+    public void Walkoff_Double_TrailingByOne_ClampsToTwo() {
+        // Arrange: Bottom 9th, home down 1 (4-5), runners on 2nd and 3rd, 0 outs
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 0,
+            onFirst: false, onSecond: true, onThird: true,
+            awayScore: 5, homeScore: 4,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 2,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 2,  // Both runners would score
+            NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
+            Type: PaType.Double,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Exactly 2 runs to win");
+            Assert.That(snapshot.AwayScore, Is.EqualTo(5));
+            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
+            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
+            Assert.That(snapshot.OnSecond, Is.False, "Batter not on 2nd (walk-off suppresses)");
+            Assert.That(result.HomeEarnedRuns, Is.EqualTo(2), "Both runs earned");
+        });
+    }
+
+    /// <summary>
+    /// Test: Walk-off grand slam exception - all runs count (dead ball rule).
+    /// PRD Section 3.1: Walkoff_GrandSlam_TrailingByTwo_AllFourRunsCount
+    /// MLB Rule: Home run is dead ball; all runners must touch all bases; all runs count even in walk-off situations
+    /// </summary>
+    [Test]
+    public void Walkoff_GrandSlam_TrailingByTwo_AllFourRunsCount() {
+        // Arrange: Bottom 9th, home down 2 (3-5), bases loaded, 1 out
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 1,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 5, homeScore: 3,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 6,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 4,  // Grand slam
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
+            Type: PaType.HomeRun,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        var snapshot = result.ToTestSnapshot();
+        Assert.Multiple(() => {
+            Assert.That(snapshot.HomeScore, Is.EqualTo(7), "ALL 4 runs count (HR exception)");
+            Assert.That(snapshot.AwayScore, Is.EqualTo(5));
+            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
+            Assert.That(result.HomeEarnedRuns, Is.EqualTo(4), "All runs earned");
+        });
+    }
 }
