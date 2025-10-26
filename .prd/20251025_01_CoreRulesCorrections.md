@@ -104,7 +104,11 @@ public sealed record PaResolution(
 
 #### FR-2: Walk-off Run Clamping
 
-**Requirement:** When a game-ending play occurs in the bottom of the 9th inning or later, credit only the minimum runs needed to win.
+**Requirement:** When a game-ending play occurs in the bottom of the 9th inning or later, apply special rules based on the play type.
+
+**MLB Official Rules (Rule 5.06(b)(4)(A) & Rule 5.08(a)):**
+- **Walk-off HOME RUN:** ALL runs count. The batter and all runners must touch all bases (dead ball rule).
+- **Walk-off NON-HOME RUN:** Only the minimum runs needed to win are credited. Game ends when winning run crosses home plate.
 
 **Algorithm:**
 ```
@@ -114,12 +118,20 @@ IF (Half == Bottom AND Inning >= 9 AND Offense == Home):
 
     IF (offenseScore <= defenseScore):  // Tied or trailing
         runsNeededToWin = (defenseScore - offenseScore) + 1
-        clampedRuns = Min(runsScored, runsNeededToWin)
 
-        // Apply only clamped runs
+        // EXCEPTION: Home runs are dead balls - all runs count
+        IF (Type == PaType.HomeRun):
+            clampedRuns = runsScored  // No clamping for HR
+            walkoffApplied = true
+        ELSE:
+            // Non-HR: Clamp to minimum needed
+            clampedRuns = Min(runsScored, runsNeededToWin)
+            walkoffApplied = (runsScored >= runsNeededToWin)
+
+        // Apply clamped runs
         // Set IsFinal = true
         // LOB = 0 (ALWAYS enforced on walk-off, game ends mid-play)
-        // Suppress further base state updates
+        // Suppress further base state updates (except for HR - runners complete circuit)
 ```
 
 **Order of Operations (Critical):**
@@ -131,7 +143,9 @@ IF (Half == Bottom AND Inning >= 9 AND Offense == Home):
 **Edge Cases:**
 - Home team already leading: No bottom half played, game ends after top of 9th
 - Extra innings: Walk-off logic applies in any bottom half after 9th inning
-- Multiple runners scoring: Only count runs until lead is taken
+- Walk-off grand slam: All 4 runs count (HR exception)
+- Walk-off single with bases loaded: Only runs needed to win count (non-HR clamping)
+- Multiple runners scoring on non-HR: Only count runs until lead is taken
 
 #### FR-3: RBI Attribution Rules
 
@@ -387,7 +401,16 @@ private (int clampedRuns, bool walkoffApplied) ApplyWalkoffClamping(
     // Calculate runs needed to win
     int runsNeededToWin = (awayScore - homeScore) + 1;
 
-    // Clamp to minimum needed
+    // CRITICAL: Home runs are dead balls - all runs count (MLB Rule 5.06(b)(4)(A))
+    if (resolution.Type == PaType.HomeRun) {
+        // Walk-off home run: credit all runs, game ends
+        if (resolution.RunsScored >= runsNeededToWin) {
+            return (resolution.RunsScored, true);  // All runs count for HR
+        }
+        return (resolution.RunsScored, false);  // Not enough to win yet
+    }
+
+    // Non-home run: Clamp to minimum needed (game ends when winning run scores)
     if (resolution.RunsScored >= runsNeededToWin) {
         return (runsNeededToWin, true);
     }
@@ -519,12 +542,15 @@ private (int earned, int unearned) ClassifyRuns(PaResolution resolution)
 | Test Case | Setup | Expected Result |
 |-----------|-------|-----------------|
 | `WalkoffSingle_TiedGame_ClampsToOne` | B9, tie, R3, `Single` (would score 1) | Runs=1, IsFinal=true, LOB=0 |
-| `WalkoffHomeRun_TrailingByTwo_ClampsToThree` | B9, down 2, bases loaded, `HomeRun` | Runs=3, IsFinal=true, LOB=0 |
-| `WalkoffHomeRun_TrailingByTwo_RbiCorrect` | B9, down 2, bases loaded, `HomeRun` | Runs=3, RBI=3 (not 4), IsFinal=true |
+| `WalkoffHomeRun_TrailingByTwo_AllRunsCount` | B9, down 2, bases loaded, `HomeRun` | Runs=4, RBI=4, IsFinal=true, LOB=0 (HR exception) |
+| `WalkoffGrandSlam_TiedGame_AllFourRuns` | B9, tie, bases loaded, `HomeRun` | Runs=4, RBI=4, IsFinal=true (HR exception) |
+| `WalkoffSoloHomeRun_TiedGame_OneRun` | B9, tie, bases empty, `HomeRun` | Runs=1, RBI=1, IsFinal=true (HR exception) |
 | `WalkoffDouble_TrailingByOne_ClampsToTwo` | B9, down 1, R2+R3, `Double` | Runs=2, IsFinal=true, LOB=0 |
+| `WalkoffSingle_BasesLoaded_ClampsToOne` | B9, tie, bases loaded, `Single` | Runs=1, IsFinal=true, LOB=0 (non-HR clamping) |
 | `TopNinth_NoWalkoff` | T9, tie, R3, `Single` | Runs=1, IsFinal=false |
 | `BottomNinth_AlreadyLeading_NoBottomHalf` | After T9, home leads | No B9 played, IsFinal=true |
 | `ExtraInnings_WalkoffStillApplies` | B10, tie, R3, `Single` | Runs=1, IsFinal=true |
+| `ExtraInnings_WalkoffHomeRun_AllRuns` | B10, down 1, R1+R3, `HomeRun` | Runs=3, RBI=3, IsFinal=true (HR exception) |
 
 #### Test Suite: TestSnapshot Safety Tests
 

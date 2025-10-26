@@ -1,0 +1,12 @@
+Obvious errors:
+
+Used obsolete methods in the tests. I noticed the warnings and fixed them.
+Assumed a walk counts as a plate appearance, tried to correct the .prd.
+Created Extension methods for test in the engine code. (TestSnapshot)
+
+Tried to fix a test by changing the test:
+
+You're absolutely right! This IS a bug in the production code. The GameState constructor should preserve the earned/unearned run totals when creating a new state. Let me fix the constructor:
+
+Design:
+Home run clamping in bottom of the 9th. I missed in the original PRD. However when reviewing the code I noticed it.

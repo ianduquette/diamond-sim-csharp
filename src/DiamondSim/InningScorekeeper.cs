@@ -46,6 +46,123 @@ public class InningScorekeeper {
     /// </summary>
     private int _currentHalfInningRuns = 0;
     /// <summary>
+    /// Applies walk-off run clamping if applicable.
+    /// Walk-off situations occur in the bottom of the 9th inning or later when the home team
+    /// is tied or trailing.
+    /// CRITICAL: Home runs are dead balls - all runs count (MLB Rule 5.06(b)(4)(A)).
+    /// Non-home runs: Only the minimum runs needed to win are credited.
+    /// </summary>
+    /// <param name="state">The current game state before the plate appearance.</param>
+    /// <param name="resolution">The resolved outcome of the plate appearance.</param>
+    /// <returns>A tuple containing the clamped run count and whether walk-off was applied.</returns>
+    private (int clampedRuns, bool walkoffApplied) ApplyWalkoffClamping(
+        GameState state,
+        PaResolution resolution) {
+        // Check if walk-off situation is possible
+        if (state.Half != InningHalf.Bottom || state.Inning < 9 || state.Offense != Team.Home) {
+            return (resolution.RunsScored, false);
+        }
+
+        int homeScore = state.HomeScore;
+        int awayScore = state.AwayScore;
+
+        // Home team already winning - no clamping needed
+        if (homeScore > awayScore) {
+            return (resolution.RunsScored, false);
+        }
+
+        // Calculate runs needed to win
+        int runsNeededToWin = (awayScore - homeScore) + 1;
+
+        // CRITICAL: Home runs are dead balls - all runs count (MLB Rule 5.06(b)(4)(A))
+        if (resolution.Type == PaType.HomeRun) {
+            // Walk-off home run: credit all runs, game ends
+            if (resolution.RunsScored >= runsNeededToWin) {
+                return (resolution.RunsScored, true);  // All runs count for HR
+            }
+            return (resolution.RunsScored, false);  // Not enough to win yet
+        }
+
+        // Non-home run: Clamp to minimum needed (game ends when winning run scores)
+        if (resolution.RunsScored >= runsNeededToWin) {
+            return (runsNeededToWin, true);
+        }
+
+        // Not enough runs to win yet
+        return (resolution.RunsScored, false);
+    }
+
+    /// <summary>
+    /// Calculates RBI (Runs Batted In) according to official baseball rules.
+    /// CRITICAL: This is called AFTER walk-off clamping, using the clamped run total.
+    /// </summary>
+    /// <param name="resolution">The plate appearance resolution (with potentially clamped runs).</param>
+    /// <param name="clampedRuns">The actual runs credited (after walk-off clamping).</param>
+    /// <param name="priorState">The game state before the plate appearance.</param>
+    /// <returns>The number of RBI to credit to the batter.</returns>
+    private int CalculateRbi(PaResolution resolution, int clampedRuns, GameState priorState) {
+        // Rule 1: ROE = 0 RBI (MLB Rule 9.06(g))
+        if (resolution.Type == PaType.ReachOnError) {
+            return 0;
+        }
+
+        // Rule 2: Bases-loaded walk/HBP = 1 RBI
+        if ((resolution.Type == PaType.BB || resolution.Type == PaType.HBP) &&
+            priorState.OnFirst && priorState.OnSecond && priorState.OnThird) {
+            return 1;
+        }
+
+        // Rule 3: Sacrifice fly = 1 RBI
+        if (resolution.Flags?.IsSacFly == true) {
+            return 1;
+        }
+
+        // Rule 4: Clean BIP - credit clamped runs scored
+        // Note: clampedRuns already accounts for walk-off clamping
+        return clampedRuns;
+    }
+
+    /// <summary>
+    /// Classifies runs as earned or unearned according to official baseball rules (v1-light simplified approach).
+    /// CRITICAL: This is called AFTER walk-off clamping, using the clamped run total.
+    ///
+    /// V1-LIGHT SIMPLIFICATION: This uses a conservative approach where any error involvement
+    /// marks all runs as unearned. Full MLB Rule 9.16 reconstruction (hypothetical inning replay
+    /// without errors) is deferred to a future PRD.
+    /// </summary>
+    /// <param name="resolution">The plate appearance resolution.</param>
+    /// <param name="clampedRuns">The actual runs credited (after walk-off clamping).</param>
+    /// <returns>A tuple of (earned runs, unearned runs).</returns>
+    private (int earned, int unearned) ClassifyRuns(PaResolution resolution, int clampedRuns) {
+        // If no runs scored, nothing to classify
+        if (clampedRuns == 0) {
+            return (0, 0);
+        }
+
+        // Rule 1: ROE = all runs unearned
+        if (resolution.Type == PaType.ReachOnError) {
+            return (0, clampedRuns);
+        }
+
+        // Rule 2: Check for error-assisted advancement (v1-light simplified)
+        // In v1-light, if ANY runner advanced on error, mark ALL runs as unearned
+        // Full MLB Rule 9.16 reconstruction (hypothetical replay without errors) deferred to future PRD
+        if (resolution.HadError && resolution.AdvanceOnError != null) {
+            bool anyAdvanceOnError =
+                resolution.AdvanceOnError.OnFirst ||
+                resolution.AdvanceOnError.OnSecond ||
+                resolution.AdvanceOnError.OnThird;
+
+            if (anyAdvanceOnError) {
+                return (0, clampedRuns);
+            }
+        }
+
+        // Rule 3: Clean play = all runs earned
+        return (clampedRuns, 0);
+    }
+
+    /// <summary>
     /// Applies a plate appearance resolution to the current game state, returning an updated state.
     /// </summary>
     /// <param name="state">The current game state before the plate appearance.</param>
@@ -74,6 +191,9 @@ public class InningScorekeeper {
         // Get current batter's lineup position before advancing
         int batterLineupPosition = state.GetBattingOrderIndex();
 
+        // STEP 1: CLAMP RUNS (walk-off logic if applicable)
+        var (clampedRuns, walkoffApplied) = ApplyWalkoffClamping(state, resolution);
+
         // Create new state instance for immutable updates
         var newState = new GameState(
             balls: 0,  // Reset count for next PA
@@ -90,38 +210,67 @@ public class InningScorekeeper {
             homeBattingOrderIndex: state.HomeBattingOrderIndex,
             offense: state.Offense,
             defense: state.Defense,
-            isFinal: state.IsFinal
+            isFinal: state.IsFinal,
+            awayEarnedRuns: state.AwayEarnedRuns,
+            awayUnearnedRuns: state.AwayUnearnedRuns,
+            homeEarnedRuns: state.HomeEarnedRuns,
+            homeUnearnedRuns: state.HomeUnearnedRuns
         );
 
-        // 1. Apply runs to batting team's score
+        // STEP 2: Apply clamped runs to batting team's score
         if (newState.Offense == Team.Away) {
-            newState.AwayScore += resolution.RunsScored;
+            newState.AwayScore += clampedRuns;
         }
         else {
-            newState.HomeScore += resolution.RunsScored;
+            newState.HomeScore += clampedRuns;
         }
 
         // Track runs for current half-inning (for line score)
-        _currentHalfInningRuns += resolution.RunsScored;
+        _currentHalfInningRuns += clampedRuns;
 
-        // 2. Apply outs
+        // STEP 3: Apply outs
         newState.Outs += resolution.OutsAdded;
 
-        // 3. Apply bases
-        newState.OnFirst = resolution.NewBases.OnFirst;
-        newState.OnSecond = resolution.NewBases.OnSecond;
-        newState.OnThird = resolution.NewBases.OnThird;
+        // STEP 4: Apply bases (unless walk-off applied)
+        if (!walkoffApplied) {
+            newState.OnFirst = resolution.NewBases.OnFirst;
+            newState.OnSecond = resolution.NewBases.OnSecond;
+            newState.OnThird = resolution.NewBases.OnThird;
+        }
+        else {
+            // Walk-off: clear bases (game ends mid-play)
+            newState.OnFirst = false;
+            newState.OnSecond = false;
+            newState.OnThird = false;
+        }
 
-        // Track box score statistics
+        // STEP 5: Calculate RBI (using clamped runs)
+        int rbi = CalculateRbi(resolution, clampedRuns, state);
+
+        // STEP 6: Classify earned/unearned runs (using clamped runs)
+        var (earnedRuns, unearnedRuns) = ClassifyRuns(resolution, clampedRuns);
+
+        // Update team earned/unearned run totals
+        if (newState.Offense == Team.Away) {
+            newState.AwayEarnedRuns += earnedRuns;
+            newState.AwayUnearnedRuns += unearnedRuns;
+        }
+        else {
+            newState.HomeEarnedRuns += earnedRuns;
+            newState.HomeUnearnedRuns += unearnedRuns;
+        }
+
+        // STEP 7: Track box score statistics (using clamped runs and calculated RBI)
         // Determine if batter scored (true for HR, false otherwise in v0.2 simplification)
         bool batterScored = resolution.Type == PaType.HomeRun;
 
-        // Increment batter stats
+        // Increment batter stats (using clamped runs)
+        // Note: RBI will be added to BoxScore in a future update when RBI tracking is added
         BoxScore.IncrementBatterStats(
             team: state.Offense,
             lineupPosition: batterLineupPosition,
             paType: resolution.Type,
-            runsScored: resolution.RunsScored,
+            runsScored: clampedRuns,
             batterScored: batterScored
         );
 
@@ -131,10 +280,10 @@ public class InningScorekeeper {
             pitcherId: 0,
             paType: resolution.Type,
             outsAdded: resolution.OutsAdded,
-            runsScored: resolution.RunsScored
+            runsScored: clampedRuns
         );
 
-        // 4. Advance lineup
+        // STEP 8: Advance lineup
         if (newState.Offense == Team.Away) {
             newState.AwayBattingOrderIndex = (newState.AwayBattingOrderIndex + 1) % 9;
         }
@@ -142,22 +291,20 @@ public class InningScorekeeper {
             newState.HomeBattingOrderIndex = (newState.HomeBattingOrderIndex + 1) % 9;
         }
 
-        // 5. Check walk-off (bottom half, inning ≥ 9, home leads)
-        if (newState.Half == InningHalf.Bottom &&
-            newState.Inning >= 9 &&
-            newState.HomeScore > newState.AwayScore) {
-            // Record partial inning runs to line score (actual runs scored, not 'X')
+        // STEP 9: Check walk-off ending (if walk-off was applied)
+        if (walkoffApplied) {
+            // Record partial inning runs to line score (clamped runs scored)
             LineScore.RecordInning(Team.Home, _currentHalfInningRuns);
             _currentHalfInningRuns = 0;
 
-            // Walk-off: LOB = 0 for partial inning (no 3rd out)
+            // Walk-off: LOB = 0 ALWAYS (game ends mid-play, no 3rd out)
             HomeLOB.Add(0);
 
             newState.IsFinal = true;
             return newState; // Game over - return immediately
         }
 
-        // 6. Check half close (3 outs)
+        // STEP 10: Check half close (3 outs)
         if (newState.Outs >= 3) {
             return PerformHalfInningTransition(newState);
         }

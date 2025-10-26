@@ -60,6 +60,26 @@ public class GameState {
     public int HomeScore { get; set; }
 
     /// <summary>
+    /// Gets or sets the away team's earned runs.
+    /// </summary>
+    public int AwayEarnedRuns { get; set; }
+
+    /// <summary>
+    /// Gets or sets the away team's unearned runs.
+    /// </summary>
+    public int AwayUnearnedRuns { get; set; }
+
+    /// <summary>
+    /// Gets or sets the home team's earned runs.
+    /// </summary>
+    public int HomeEarnedRuns { get; set; }
+
+    /// <summary>
+    /// Gets or sets the home team's unearned runs.
+    /// </summary>
+    public int HomeUnearnedRuns { get; set; }
+
+    /// <summary>
     /// Gets or sets the away team's current batting order position (0-8).
     /// </summary>
     public int AwayBattingOrderIndex { get; set; }
@@ -110,6 +130,10 @@ public class GameState {
         OnThird = false;
         AwayScore = 0;
         HomeScore = 0;
+        AwayEarnedRuns = 0;
+        AwayUnearnedRuns = 0;
+        HomeEarnedRuns = 0;
+        HomeUnearnedRuns = 0;
         AwayBattingOrderIndex = 0;
         HomeBattingOrderIndex = 0;
         Offense = Team.Away;
@@ -134,6 +158,10 @@ public class GameState {
     /// <param name="offense">Which team is currently batting.</param>
     /// <param name="defense">Which team is currently fielding.</param>
     /// <param name="isFinal">Whether the game has reached a final state.</param>
+    /// <param name="awayEarnedRuns">The away team's earned runs (optional, defaults to 0).</param>
+    /// <param name="awayUnearnedRuns">The away team's unearned runs (optional, defaults to 0).</param>
+    /// <param name="homeEarnedRuns">The home team's earned runs (optional, defaults to 0).</param>
+    /// <param name="homeUnearnedRuns">The home team's unearned runs (optional, defaults to 0).</param>
     /// <exception cref="ArgumentOutOfRangeException">
     /// Thrown when any parameter is outside its valid range.
     /// </exception>
@@ -152,7 +180,11 @@ public class GameState {
         int homeBattingOrderIndex,
         Team offense,
         Team defense,
-        bool isFinal = false) {
+        bool isFinal = false,
+        int awayEarnedRuns = 0,
+        int awayUnearnedRuns = 0,
+        int homeEarnedRuns = 0,
+        int homeUnearnedRuns = 0) {
         if (balls < 0 || balls > 4) {
             throw new ArgumentOutOfRangeException(nameof(balls), balls, "Balls must be between 0 and 4.");
         }
@@ -195,6 +227,10 @@ public class GameState {
         OnThird = onThird;
         AwayScore = awayScore;
         HomeScore = homeScore;
+        AwayEarnedRuns = awayEarnedRuns;
+        AwayUnearnedRuns = awayUnearnedRuns;
+        HomeEarnedRuns = homeEarnedRuns;
+        HomeUnearnedRuns = homeUnearnedRuns;
         AwayBattingOrderIndex = awayBattingOrderIndex;
         HomeBattingOrderIndex = homeBattingOrderIndex;
         Offense = offense;

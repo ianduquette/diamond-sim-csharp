@@ -30,10 +30,14 @@ public sealed record PaFlags(
 /// <param name="NewBases">The resulting base state after the plate appearance.</param>
 /// <param name="Type">The type of plate appearance outcome.</param>
 /// <param name="Flags">Optional flags for special outcomes (double play, sacrifice fly, etc.).</param>
+/// <param name="HadError">Whether the play involved a fielding error.</param>
+/// <param name="AdvanceOnError">Which runners advanced specifically due to error (null if no error). Flags correspond to the starting base the runner occupied before the play.</param>
 public sealed record PaResolution(
     int OutsAdded,
     int RunsScored,
     BaseState NewBases,
     PaType Type,
-    PaFlags? Flags = null
+    PaFlags? Flags = null,
+    bool HadError = false,
+    BaseState? AdvanceOnError = null
 );

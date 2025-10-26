@@ -1,0 +1,112 @@
+# Tests: Scoring & Walk-Off Edge Cases (.prp)
+
+> Include .prp/dotnet_project_rules.prp
+> Follow `.rules/style.md` and `.rules/testing.md`
+> Author tests only (no engine code changes in this step)
+
+**Status:** Draft
+**Created:** 2025-10-26
+**Epic:** Baseball Simulation Engine – Scoring & Recording
+**Depends on:** PRD-20251026-01 Core Rules Corrections
+
+---
+
+## Goal
+Add focused tests that lock in corrected scoring rules and tricky endpoints:
+- Walk-off clamping (non-HR) vs **walk-off HR (all runs count)**
+- RBI on ROE/HBP/SF in game-ending situations
+- Team **Earned vs Unearned** (v1-light) under mixed error involvement
+- Rare outs (`OutsAdded = 3`), and **Skip-Bottom-9th** bookkeeping
+
+---
+
+## Scope
+Create new NUnit test files in `tests/DiamondSim.Tests/` with deterministic setups and explicit expected outcomes. Use `TestSnapshot` for state assertions; avoid `GameState.Equals`.
+
+**New files:**
+- `WalkoffEdgeTests.cs`
+- `EarnedRunEdgeTests.cs`
+- `TriplePlayAndLOBTests.cs`
+- `SkipBottomNinthEdgeTests.cs`
+
+---
+
+## Test Cases (authoritative)
+
+### A. Walk-off Endings (non-HR clamp vs HR full credit) — `WalkoffEdgeTests.cs`
+1. **Walkoff_Roe_Tie_BL_ROE_PlatesOne**
+   - **Setup:** Bottom 9th, tie (5–5), bases loaded; `Type=ReachOnError`, `RunsScored>=1`.
+   - **Expect:** Final 6–5, **RBI=0**, **Unearned=1**, `LOB=0`, bases **not** applied post-play, `IsFinal=true`.
+
+2. **Walkoff_HBP_Tie_BL_ForcedInRun**
+   - **Setup:** Bottom 9th, tie, bases loaded; `Type=HBP`, `RunsScored=1`.
+   - **Expect:** Final +1 run, **RBI=1**, **Earned=1** (no error flags), `LOB=0`, `IsFinal=true`.
+
+3. **Walkoff_SacFly_Tie_R3_LessThan2Outs**
+   - **Setup:** Bottom 9th, tie, R3 only; `Type=InPlayOut`, `Flags.IsSacFly=true`, `RunsScored=1`.
+   - **Expect:** Final +1, **RBI=1**; if play marked with error enabling the score (`HadError/AdvanceOnError`), **Unearned=1**; `LOB=0`, `IsFinal=true`.
+
+4. **Walkoff_Double_TrailingByOne_R2R3**
+   - **Setup:** Bottom 9th, home down 1 (4–5), R2+R3; `Type=Double`, `RunsScored>=2`.
+   - **Expect:** Clamp to **2** runs (6–5), `LOB=0`, batter/extra runner advances suppressed, `IsFinal=true`.
+
+5. **Walkoff_HomeRun_TrailingByTwo_GrandSlam_AllRunsCount**
+   - **Setup:** Bottom 9th, home down 2, bases loaded; `Type=HomeRun`, `RunsScored=4`.
+   - **Expect:** **All 4 runs credited** (final +4), `LOB=0`, `IsFinal=true`. (HR exception: no clamping.)
+
+### B. Earned vs Unearned (v1-light) — `EarnedRunEdgeTests.cs`
+6. **Earned_MultiRun_Single_ErrorOnlyEnablesLeadRunner_V1MarksAllUnearned**
+   - **Setup:** R1+R2, single; only R2’s advance flagged by error (`AdvanceOnError.OnSecond=true`), `RunsScored=2`.
+   - **Expect:** Under v1 policy, **Unearned=2**, **Earned=0**. (Documenting v1 simplification.)
+
+7. **Earned_CleanSingle_R3Scores_NoError**
+   - **Setup:** R3 only, clean single; `HadError=false`, `RunsScored=1`.
+   - **Expect:** **Earned=1**, **RBI=1**.
+
+8. **Unearned_ROE_AnyRuns_AllUnearned_NoRBI**
+   - **Setup:** `Type=ReachOnError`, any runners scoring.
+   - **Expect:** **Unearned = RunsScored**, **RBI=0**.
+
+### C. Rare Outs & LOB timing — `TriplePlayAndLOBTests.cs`
+9. **TriplePlay_OutsAdded3_EndsHalf_LOBFromInstantOfThirdOut**
+   - **Setup:** ≤1 out before PA; `OutsAdded=3`; base state may have runners.
+   - **Expect:** Half ends immediately; LOB computed at **instant of 3rd out**; line score flushes correctly; bases cleared for next half.
+
+10. **NonWalkoffHR_NotEnoughRunsToWin_NoFinal**
+    - **Setup:** Bottom 9th, home down 3, two-run HR; `RunsScored=2`.
+    - **Expect:** No final; bases cleared; lineup advances; half continues/ends per outs; line score updated by 2.
+
+### D. Skip-Bottom-9th — `SkipBottomNinthEdgeTests.cs`
+11. **SkipBottom9th_HomeLeadsAfterT9_NoBottomHalf_XRecorded**
+    - **Setup:** After T9, home leads (e.g., 4–3).
+    - **Expect:** No B9 played; line score shows **X** for home in 9th; `IsFinal=true`.
+
+12. **SkipBottom9th_WithRunnersOnAtT9End_DoesNotAffectFinal**
+    - **Setup:** End of T9 with away failing to tie/take lead; arbitrary base occupancy at end of T9.
+    - **Expect:** Still no B9; final reflects state at T9 end; no additional LOB recorded for home.
+
+---
+
+## Acceptance Criteria
+- Each test asserts:
+  - Final score deltas (including **clamp** vs **HR full credit**).
+  - **RBI** per rule (ROE=0; HBP BL=1; SF=1).
+  - **Earned vs Unearned** totals per v1 policy.
+  - `IsFinal` correctness and **LOB=0** on all walk-offs.
+  - Suppressed base application on non-HR walk-offs.
+- Determinism: fixed seeds produce identical outcomes.
+- No reliance on `GameState.Equals`; use `ToTestSnapshot()` plus targeted stat/score assertions.
+
+---
+
+## Out of Scope (for this .prp)
+- Pitcher substitutions, fatigue, inherited runner attribution, decisions (W/L/S/BS).
+- Full ER reconstruction beyond v1-light policy.
+
+---
+
+## Notes
+- Reference language in test comments:
+  - **Walk-off HR:** all runs score (dead-ball HR; runners must complete base-touch).
+  - **Non-HR walk-off:** credit only minimum runs to win; stop play; LOB=0.
+- Keep setups minimal (seeded) and isolate effects to a single PA when possible.
