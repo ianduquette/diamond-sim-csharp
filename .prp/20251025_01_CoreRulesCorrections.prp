@@ -1,0 +1,122 @@
+# Core Rules Corrections (PRD only)
+
+> Include .prp/dotnet_project_rules.prp
+> Follow `.rules/style.md` and `.rules/testing.md`
+> Create the PRD only; do **not** edit code or tests in this step
+
+## Goal
+Create a plan in `.prd/20251025_01_CoreRulesCorrections.md` to fix baseline scoring/recording rules
+**before** pitching substitutions:
+- RBI on Reach-On-Error (ROE)
+- Team-level Earned vs Unearned (v1-light)
+- Walk-off clamping (only the necessary winning runs)
+- Test safety around state equality (avoid false positives)
+
+No randomness here — purely deterministic bookkeeping.
+
+## Context
+- Project: .NET 8 C# baseball simulator
+- Upstream complete:
+  - 01 – CountConditionedContact
+  - 02 – AtBatLoop
+  - 03 – BallInPlayResolution (emits `PaResolution`)
+- Location:
+  - Library: `src/DiamondSim/`
+  - Tests: `tests/DiamondSim.Tests/`
+- Determinism: upstream RNG already decided outcomes.
+- Scope: Pre-pitching pass (no injuries/ejections; no inherited runner ownership yet).
+
+## Inputs
+- `GameState` snapshot before the PA (existing):
+  - `inning:int (1..)`
+  - `half: Top|Bottom`
+  - `outs:int (0..2)`
+  - `bases:{on1,on2,on3:bool}`
+  - `score:{away:int,home:int}`
+  - `battingOrderIndex:{away:int,home:int} (0..8)`
+  - `offense: Away|Home`, `defense: Away|Home`
+  - `isFinal: bool`
+- `PaResolution` payload from 02/03 (existing + small extensions):
+  - `outsAdded:int (0|1|2)`
+  - `runsScored:int` (includes batter on HR)
+  - `newBases:{on1,on2,on3:bool}`
+  - `type: K|BB|HBP|InPlayOut|Single|Double|Triple|HomeRun|ReachOnError`
+  - `flags:{isDoublePlay?:bool,isSacFly?:bool}`
+  - **New (for rules correctness, optional at first)**:
+    - `hadError: bool` — true if the play includes a fielding error
+    - `advanceOnError:{on1,on2,on3:bool}` — runner-specific advancement caused by error
+
+## Outputs
+- Updated `GameState` and stat taps with:
+  - Correct walk-off clamping (only necessary winning runs; end half immediately)
+  - Team-level split: `earnedRuns`, `unearnedRuns` (pitcher split deferred)
+  - RBI attribution that **excludes** ROE
+- Line score remains source-of-truth for per-inning runs
+- PA log event emitted (before/after snapshot + flags used)
+- **Testing aide:** a `TestSnapshot` (state projection) used in tests instead of `GameState.Equals`
+
+## Transition Rules (authoritative)
+1. **Compute candidate scoring** from `runsScored` on the PA.
+2. **Walk-off clamp (Bottom, 9+)**
+   If `half==Bottom && inning>=9` and the batting team would take the lead on this play:
+   - Credit only the **minimum number of runs required** to end the game.
+   - Suppress any further runner advancement/stat effects that would occur **after** the winning run crosses.
+   - Set `walkOffApplied = true`.
+3. **Apply runs** to the batting side using the **clamped** value.
+4. **Apply outs**: `outs += outsAdded`.
+5. **Apply bases**: set to `newBases`. If `walkOffApplied==true`, treat LOB as `0` and ignore downstream base state (game ends).
+6. **Advance lineup**: `battingOrderIndex[offense] = (idx + 1) % 9`.
+7. **Finalize walk-off**: If (Bottom 9+) and `score[home] > score[away]`, set `isFinal=true` and end the half immediately.
+8. **Half close (normal)**: If `outs==3`:
+   - `LOB = countOccupiedBases()` **at the instant of the 3rd out**
+   - Flush “runs this half” to the line score for the batting team
+   - Reset `outs=0`, `bases=empty`
+   - Flip sides; increment inning after Bottom→Top flip
+9. **Extras**: If tied after 9 full, alternate halves until a lead exists after a completed inning. Walk-off still applies in Bottom halves.
+
+## RBI / Earned Rules (v1-light, team-level)
+- **RBI on ROE**: If `type == ReachOnError`, **credit 0 RBI** for any runs scoring on that play.
+- **Forced-in awards**: With bases loaded, if `type ∈ {BB,HBP}` (incl. IBB), **credit 1 RBI**.
+- **BIP without error**: Credit RBI for runners who score on fair plays without ROE (cap at runs scored).
+- **Earned vs Unearned (team-level)**:
+  - Mark a run as **unearned** if:
+    - `type == ReachOnError`, **or**
+    - the specific scoring runner has `advanceOnError==true`.
+  - Otherwise, the run is **earned**. (Full reconstruction across prior errors is deferred.)
+
+## Box/Line Score Tap (scoped for this PRD)
+- Batters: `AB, H, 1B/2B/3B/HR, BB, HBP, K, RBI, R, PA, TB`
+  - **Rule note**: `ReachOnError` → RBI **0**, regardless of runs scoring.
+- Team pitching/defense (pre-pitcher split): `R, ER, UnearnedR`
+  - Maintain both team `ER` and `UnearnedR`; pitcher-level split comes later.
+- Do not compute advanced rates (OPS/ERA) in-engine.
+
+## Acceptance Criteria
+- **Walk-off correctness**: Only the necessary winning runs are credited; game ends immediately; partial half LOB = 0.
+- **RBI accuracy**: ROE never credits RBI; bases-loaded BB/HBP credits exactly 1 RBI.
+- **Earned split**: Runs caused by ROE or advancement on error are classified **unearned**; others **earned**.
+- **Deterministic**: Given identical PA sequences, line score, totals (R/ER/Unearned), RBI, and logs are identical.
+- **Test safety**: New tests use `TestSnapshot` (score, inning/half, outs, bases, isFinal, offense/defense) rather than `GameState.Equals`.
+
+## Tests to Author (seeded)
+- **ROE plates runner**: R3 only, `<2 outs`, `ReachOnError` → Runs=1, RBI=0, ER=0, Unearned=1.
+- **Bases-loaded walk**: BL, `BB` → Runs=1, RBI=1, Earned=1.
+- **BIP clean score**: R3 only, single (no error) → Runs=1, RBI=1, Earned=1.
+- **Advance on error**: R2 only, single + `advanceOnError[R2]=true` and R2 scores → Runs=1, RBI=0 (if home only via error), Unearned=1.
+- **Walk-off single (tie)**: B9 tie, R3 only, single → Only 1 run credited; game ends; LOB=0.
+- **Skip B9**: Home leads after T9 → No bottom half; final immediately.
+
+## Risks / Notes
+- **Deferred precision**: Full earned-run reconstruction (hypothetical outs after earlier errors) is postponed; this PRD adopts a v1-light split.
+- **Pitcher split deferred**: ER/unearned attribution by pitcher and inherited runner ownership will land with the pitching PRD.
+- **Equality hazard**: `GameState.Equals` comparing only balls/strikes can mask bugs; mandate `TestSnapshot` in tests.
+- **Non-functional bug (separate task)**: Probability type name collision in BIP code must be resolved to avoid misbinding (rename local DTO vs helper).
+
+## Expected Output
+Create `.prd/20251025_01_CoreRulesCorrections.md` containing:
+- Overview of rule gaps and rationale
+- Precise rules above (walk-off clamp, RBI on ROE, earned/unearned v1)
+- State/flag additions (`hadError`, `advanceOnError`, team ER/Unearned)
+- Stepwise transition logic, stat tap notes
+- Test plan and acceptance criteria
+- Dependencies on `20251024_03_BallInPlayResolution` (for `PaResolution` extensions)
