@@ -32,6 +32,7 @@ public sealed record PaFlags(
 /// <param name="Flags">Optional flags for special outcomes (double play, sacrifice fly, etc.).</param>
 /// <param name="HadError">Whether the play involved a fielding error.</param>
 /// <param name="AdvanceOnError">Which runners advanced specifically due to error (null if no error). Flags correspond to the starting base the runner occupied before the play.</param>
+/// <param name="BasesAtThirdOut">Snapshot of base occupancy at the instant the third out occurred (null if PA doesn't end half). This captures which runners were still on base at the moment of the third out, excluding any runners who scored or were retired before the third out. Used for accurate LOB (Left On Base) computation.</param>
 public sealed record PaResolution(
     int OutsAdded,
     int RunsScored,
@@ -39,5 +40,6 @@ public sealed record PaResolution(
     PaType Type,
     PaFlags? Flags = null,
     bool HadError = false,
-    BaseState? AdvanceOnError = null
+    BaseState? AdvanceOnError = null,
+    BaseState? BasesAtThirdOut = null
 );

@@ -163,6 +163,52 @@ public class InningScorekeeper {
     }
 
     /// <summary>
+    /// Computes the number of runners left on base (LOB) for a half-inning ending plate appearance.
+    /// </summary>
+    /// <param name="state">The current game state before the plate appearance.</param>
+    /// <param name="resolution">The resolved outcome of the plate appearance.</param>
+    /// <param name="isWalkoff">Whether this is a walk-off situation.</param>
+    /// <returns>The number of runners left on base (0-3).</returns>
+    /// <remarks>
+    /// LOB computation rules (in priority order):
+    /// 1. Walk-off situations: Always return 0 (game ends mid-play, no runners stranded)
+    /// 2. Third-out snapshot available: Use BasesAtThirdOut (authoritative)
+    /// 3. Fallback: Use NewBases (backward compatibility until all producers updated)
+    /// </remarks>
+    private int ComputeLeftOnBase(
+        GameState state,
+        PaResolution resolution,
+        bool isWalkoff) {
+        // Rule 1: Walk-off always results in LOB = 0
+        if (isWalkoff) {
+            return 0;
+        }
+
+        // Rule 2: Use third-out snapshot if available (authoritative)
+        if (resolution.BasesAtThirdOut != null) {
+            return CountOccupiedBases(resolution.BasesAtThirdOut);
+        }
+
+        // Rule 3: Fallback to legacy behavior (post-play bases)
+        // This maintains backward compatibility until all producers are updated
+        // Note: In production, consider logging a warning here
+        return CountOccupiedBases(resolution.NewBases);
+    }
+
+    /// <summary>
+    /// Counts the number of occupied bases in a BaseState.
+    /// </summary>
+    /// <param name="bases">The base state to count.</param>
+    /// <returns>The number of occupied bases (0-3).</returns>
+    private int CountOccupiedBases(BaseState bases) {
+        int count = 0;
+        if (bases.OnFirst) count++;
+        if (bases.OnSecond) count++;
+        if (bases.OnThird) count++;
+        return count;
+    }
+
+    /// <summary>
     /// Applies a plate appearance resolution to the current game state, returning an updated state.
     /// </summary>
     /// <param name="state">The current game state before the plate appearance.</param>
@@ -306,7 +352,7 @@ public class InningScorekeeper {
 
         // STEP 10: Check half close (3 outs)
         if (newState.Outs >= 3) {
-            return PerformHalfInningTransition(newState);
+            return PerformHalfInningTransition(newState, resolution, walkoffApplied);
         }
 
         return newState;
@@ -316,10 +362,12 @@ public class InningScorekeeper {
     /// Performs the half-inning transition when 3 outs are recorded.
     /// </summary>
     /// <param name="state">The current game state with 3 or more outs.</param>
+    /// <param name="resolution">The plate appearance resolution that ended the half-inning.</param>
+    /// <param name="isWalkoff">Whether this was a walk-off situation (should always be false here, as walk-offs exit early).</param>
     /// <returns>A new GameState instance with the half-inning transition applied.</returns>
     /// <remarks>
     /// Transition sequence:
-    /// 1. Count LOB (left on base) - occupied bases at moment of 3rd out
+    /// 1. Count LOB (left on base) using BasesAtThirdOut snapshot if available
     /// 2. Record runs to line score for completed half-inning
     /// 3. Record LOB for completed half-inning
     /// 4. Check "skip bottom 9th" rule (if inning==9, half==Top, HomeScore > AwayScore)
@@ -328,11 +376,10 @@ public class InningScorekeeper {
     /// 7. If Half==Top: switch to Bottom, swap Offense/Defense
     /// 8. If Half==Bottom: switch to Top, increment Inning, swap Offense/Defense
     /// </remarks>
-    private GameState PerformHalfInningTransition(GameState state) {
-        // 1. Count LOB (left on base) at moment of 3rd out
-        int lob = (state.OnFirst ? 1 : 0) +
-                  (state.OnSecond ? 1 : 0) +
-                  (state.OnThird ? 1 : 0);
+    private GameState PerformHalfInningTransition(GameState state, PaResolution resolution, bool isWalkoff) {
+        // 1. Count LOB (left on base) using the new ComputeLeftOnBase method
+        // This uses BasesAtThirdOut snapshot if available, otherwise falls back to NewBases
+        int lob = ComputeLeftOnBase(state, resolution, isWalkoff);
 
         // 2. Record runs to line score for completed half-inning
         LineScore.RecordInning(state.Offense, _currentHalfInningRuns);

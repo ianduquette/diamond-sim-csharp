@@ -98,13 +98,14 @@ public class LineScoreTests {
         );
         state = _scorekeeper.ApplyPlateAppearance(state, loadBases);
 
-        // 3rd out with bases loaded
+        // 3rd out with bases loaded - using BasesAtThirdOut snapshot
         for (int i = 0; i < 3; i++) {
             var outResolution = new PaResolution(
                 OutsAdded: 1,
                 RunsScored: 0,
-                NewBases: new BaseState(true, true, true), // Bases stay loaded
-                Type: PaType.InPlayOut
+                NewBases: new BaseState(false, false, false), // Bases cleared after play
+                Type: PaType.InPlayOut,
+                BasesAtThirdOut: new BaseState(true, true, true) // Bases loaded at instant of 3rd out
             );
             state = _scorekeeper.ApplyPlateAppearance(state, outResolution);
         }
@@ -112,6 +113,242 @@ public class LineScoreTests {
         // Verify LOB = 3 for away team
         Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(3));
         Assert.That(_scorekeeper.AwayTotalLOB, Is.EqualTo(3));
+    }
+
+    /// <summary>
+    /// LOB (Left On Base) Tests - Testing BasesAtThirdOut snapshot functionality
+    /// These tests verify that LOB is correctly computed from the base state at the instant
+    /// the third out occurs, rather than the post-play base state.
+    /// </summary>
+
+    [Test]
+    public void LOB_TriplePlay_BasesLoaded_EqualsThree() {
+        // Arrange: Bases loaded, 0 outs, triple play
+        var state = _initialState;
+        state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 5, half: InningHalf.Top, outs: 0,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 3,
+            RunsScored: 0,
+            NewBases: new BaseState(false, false, false),
+            Type: PaType.InPlayOut,
+            BasesAtThirdOut: new BaseState(true, true, true)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(3));
+        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+    }
+
+    [Test]
+    public void LOB_DoublePlay_RunnerOnThird_EqualsOne() {
+        // Arrange: Runner on third, 1 out, double play ends half
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 3, half: InningHalf.Bottom, outs: 1,
+            onFirst: false, onSecond: false, onThird: true,
+            awayScore: 2, homeScore: 1,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 3,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 2,
+            RunsScored: 0,
+            NewBases: new BaseState(false, false, false),
+            Type: PaType.InPlayOut,
+            Flags: new PaFlags(IsDoublePlay: true, IsSacFly: false),
+            BasesAtThirdOut: new BaseState(false, false, true)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.HomeLOB[0], Is.EqualTo(1));
+        Assert.That(result.Half, Is.EqualTo(InningHalf.Top));
+        Assert.That(result.Inning, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void LOB_StrikeoutWithRunners_EqualsTwo() {
+        // Arrange: Runners on first and second, 2 outs, strikeout
+        var state = new GameState(
+            balls: 3, strikes: 2,
+            inning: 7, half: InningHalf.Top, outs: 2,
+            onFirst: true, onSecond: true, onThird: false,
+            awayScore: 3, homeScore: 2,
+            awayBattingOrderIndex: 5, homeBattingOrderIndex: 2,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 0,
+            NewBases: new BaseState(true, true, false),
+            Type: PaType.K,
+            BasesAtThirdOut: new BaseState(true, true, false)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(2));
+        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+    }
+
+    [Test]
+    public void LOB_RunnerScoresBeforeThirdOut_NotCountedInLOB() {
+        // Arrange: R1/R2, 2 outs, R2 scores before third out on trailing runner
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 8, half: InningHalf.Top, outs: 2,
+            onFirst: true, onSecond: true, onThird: false,
+            awayScore: 2, homeScore: 3,
+            awayBattingOrderIndex: 1, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 1,  // R2 scores
+            NewBases: new BaseState(false, false, false),
+            Type: PaType.InPlayOut,
+            BasesAtThirdOut: new BaseState(true, false, false)  // Only R1 at instant of third out
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(1));  // Only R1 stranded
+        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+    }
+
+    [Test]
+    public void LOB_EmptyBasesAtThirdOut_EqualsZero() {
+        // Arrange: No runners, 2 outs, strikeout
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 1, half: InningHalf.Top, outs: 2,
+            onFirst: false, onSecond: false, onThird: false,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 2, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 0,
+            NewBases: new BaseState(false, false, false),
+            Type: PaType.InPlayOut,
+            BasesAtThirdOut: new BaseState(false, false, false)
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(0));
+        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+    }
+
+    [Test]
+    public void LOB_WalkoffNonHomeRun_AlwaysZero() {
+        // Arrange: Bottom 9th, tied, R1/R3, 2 outs, single wins game
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 2,
+            onFirst: true, onSecond: false, onThird: true,
+            awayScore: 3, homeScore: 3,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 5,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 1,
+            NewBases: new BaseState(true, true, false),
+            Type: PaType.Single,
+            BasesAtThirdOut: null  // No third out in walk-off
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.HomeLOB[0], Is.EqualTo(0));  // Walk-off: LOB always 0
+        Assert.That(result.IsFinal, Is.True);
+        Assert.That(result.HomeScore, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void LOB_WalkoffHomeRun_AlwaysZero() {
+        // Arrange: Bottom 9th, down by 2, bases loaded, grand slam
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Bottom, outs: 1,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 5, homeScore: 3,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 8,
+            offense: Team.Home, defense: Team.Away
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 4,
+            NewBases: new BaseState(false, false, false),
+            Type: PaType.HomeRun,
+            BasesAtThirdOut: null  // No third out in walk-off
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(_scorekeeper.HomeLOB[0], Is.EqualTo(0));  // Walk-off: LOB always 0
+        Assert.That(result.IsFinal, Is.True);
+        Assert.That(result.HomeScore, Is.EqualTo(7));
+    }
+
+    [Test]
+    public void LOB_BackwardCompatibility_NoSnapshot_UsesNewBases() {
+        // Arrange: R1/R2, 2 outs, strikeout (producer not updated yet)
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 4, half: InningHalf.Top, outs: 2,
+            onFirst: true, onSecond: true, onThird: false,
+            awayScore: 1, homeScore: 0,
+            awayBattingOrderIndex: 4, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 0,
+            NewBases: new BaseState(true, true, false),
+            Type: PaType.K,
+            BasesAtThirdOut: null  // Producer hasn't been updated yet
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        // Should fall back to NewBases for LOB computation
+        Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(2));
+        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
     }
 
     [Test]

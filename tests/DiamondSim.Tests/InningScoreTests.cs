@@ -922,9 +922,10 @@ public class InningScoreTests {
         var resolution = new PaResolution(
             OutsAdded: 3,  // Triple play
             RunsScored: 0,
-            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true), // Bases still occupied at moment of 3rd out (for LOB calculation)
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false), // Bases cleared after play
             Type: PaType.InPlayOut,
-            HadError: false
+            HadError: false,
+            BasesAtThirdOut: new BaseState(OnFirst: true, OnSecond: true, OnThird: true) // Bases loaded at instant of 3rd out
         );
 
         // Act
