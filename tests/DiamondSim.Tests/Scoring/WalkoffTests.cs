@@ -7,6 +7,7 @@ namespace DiamondSim.Tests.Scoring;
 /// home runs (all runs count) and non-home runs (only minimum runs needed to win).
 /// </summary>
 [TestFixture]
+[Category("Scoring")]
 public class WalkoffTests {
     private InningScorekeeper _scorekeeper = null!;
 

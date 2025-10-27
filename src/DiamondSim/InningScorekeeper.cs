@@ -310,13 +310,13 @@ public class InningScorekeeper {
         // Determine if batter scored (true for HR, false otherwise in v0.2 simplification)
         bool batterScored = resolution.Type == PaType.HomeRun;
 
-        // Increment batter stats (using clamped runs)
-        // Note: RBI will be added to BoxScore in a future update when RBI tracking is added
+        // Increment batter stats (using clamped runs and explicit RBI)
         BoxScore.IncrementBatterStats(
             team: state.Offense,
             lineupPosition: batterLineupPosition,
             paType: resolution.Type,
             runsScored: clampedRuns,
+            rbiDelta: rbi,
             batterScored: batterScored
         );
 

@@ -1,11 +1,10 @@
-using NUnit.Framework;
-
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.Scoring;
 
 /// <summary>
 /// Tests for LineScore tracking and LOB (left on base) functionality in Phase 3.
 /// </summary>
 [TestFixture]
+[Category("Scoring")]
 public class LineScoreTests {
     private InningScorekeeper _scorekeeper = null!;
     private GameState _initialState = null!;

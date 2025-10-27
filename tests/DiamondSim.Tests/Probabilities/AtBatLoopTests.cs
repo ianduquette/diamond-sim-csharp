@@ -1,6 +1,4 @@
-using NUnit.Framework;
-
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.Probabilities;
 
 /// <summary>
 /// Tests for the complete at-bat simulation loop, validating that K%, BB%, and BIP%

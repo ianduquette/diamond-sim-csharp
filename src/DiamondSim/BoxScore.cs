@@ -177,16 +177,17 @@ public class BoxScore {
     /// <param name="lineupPosition">The batter's lineup position (0-8).</param>
     /// <param name="paType">The type of plate appearance outcome.</param>
     /// <param name="runsScored">The number of runs scored on this PA.</param>
+    /// <param name="rbiDelta">The number of RBI to credit to the batter (computed by scorer).</param>
     /// <param name="batterScored">Whether the batter themselves scored (true for HR, false otherwise).</param>
     /// <remarks>
     /// Stat increment rules per PRD Section 9.5 and MLB rules:
     /// - AB increments: K, InPlayOut, Single, Double, Triple, HomeRun, ReachOnError
     /// - AB does NOT increment: BB, HBP
     /// - H increments: Single, Double, Triple, HomeRun (NOT ReachOnError)
-    /// - RBI: Number of runs that score on the play. Batter's own run counts only on HR.
+    /// - RBI: Explicit delta provided by scorer (no inference from runs or PA type)
     /// - TB: Single=1, Double=2, Triple=3, HomeRun=4, Walk/HBP/Error=0
     /// </remarks>
-    public void IncrementBatterStats(Team team, int lineupPosition, PaType paType, int runsScored, bool batterScored) {
+    public void IncrementBatterStats(Team team, int lineupPosition, PaType paType, int runsScored, int rbiDelta, bool batterScored) {
         var batters = team == Team.Away ? AwayBatters : HomeBatters;
 
         // Initialize stats if this is the batter's first PA
@@ -244,17 +245,8 @@ public class BoxScore {
         int newHBP = current.HBP + (paType == PaType.HBP ? 1 : 0);
         int newK = current.K + (paType == PaType.K ? 1 : 0);
 
-        // Calculate RBI: batter's own run counts only on HR
-        int newRBI = current.RBI;
-        if (paType == PaType.HomeRun) {
-            // On HR, all runs scored count as RBI (including batter's own run)
-            newRBI += runsScored;
-        }
-        else if (runsScored > 0) {
-            // For other outcomes, only count runners who scored (not the batter)
-            // v0.2 simplification: For ReachOnError, award RBI if any runner scores
-            newRBI += runsScored;
-        }
+        // RBI: Use explicit delta from scorer (no inference)
+        int newRBI = current.RBI + rbiDelta;
 
         // Increment R if batter scored
         int newR = current.R + (batterScored ? 1 : 0);

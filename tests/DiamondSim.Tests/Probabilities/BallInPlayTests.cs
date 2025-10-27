@@ -1,6 +1,4 @@
-using NUnit.Framework;
-
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.Probabilities;
 
 /// <summary>
 /// Tests for ball-in-play outcome resolution and distribution validation.

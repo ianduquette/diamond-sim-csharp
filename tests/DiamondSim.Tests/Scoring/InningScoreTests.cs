@@ -7,6 +7,7 @@ namespace DiamondSim.Tests.Scoring;
 /// Tests walk-offs, half-inning transitions, extra innings, skip bottom 9th, and determinism.
 /// </summary>
 [TestFixture]
+[Category("Scoring")]
 public class InningScoreTests {
     private InningScorekeeper _scorekeeper = null!;
 

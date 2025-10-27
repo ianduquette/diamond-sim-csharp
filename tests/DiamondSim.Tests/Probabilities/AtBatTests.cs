@@ -1,5 +1,3 @@
-using DiamondSim;
-
 namespace DiamondSim.Tests.Probabilities;
 
 [TestFixture]

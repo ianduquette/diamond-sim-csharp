@@ -6,6 +6,7 @@ namespace DiamondSim.Tests.Scoring;
 /// Full MLB Rule 9.16 reconstruction (hypothetical inning replay) is deferred to future PRD.
 /// </summary>
 [TestFixture]
+[Category("Scoring")]
 public class EarnedRunTests {
     private InningScorekeeper _scorekeeper = null!;
 

@@ -1,0 +1,178 @@
+# RBI Attribution & Coverage Hardening (.prp)
+
+> Include .prp/dotnet_project_rules.prp
+> Follow `.rules/style.md` and `.rules/testing.md`
+> Spec only — no code here
+
+Status: Draft
+Created: 2025-10-26
+Epic: Baseball Simulation Engine – Scoring & Recording
+Depends on: PRD-20251025-01 Core Rules Corrections, LOB Instant-of-Third-Out .prp
+
+---
+
+Goal
+1) Fix RBI attribution so runs batted in are computed explicitly by the scorer per league rules and never inferred from runs.
+2) Backfill missing tests around RBI and walk-off behavior; lightly tidy suite structure so future changes don’t regress silently.
+
+This is a technical .prp: small, surgical engine change + targeted test adds.
+
+---
+
+Purpose & Scope
+- Owns: How RBI is computed and passed into the box score; tests proving it.
+- Doesn’t own: ER/UER classification beyond current v1 team-level, inning transitions, LOB (handled by separate .prp), pitcher responsibility for inherited runners (post-v1).
+
+---
+
+Authoritative Rules (RBI)
+1. ROE (reach on error): 0 RBI to batter.
+2. Bases-loaded BB/HBP: 1 RBI to batter.
+3. Sacrifice fly: 1 RBI to batter.
+4. Home run: RBI equals all runs scoring on the play (all runners + batter).
+5. Non-HR walk-off: RBI equals minimum runs needed to win (clamped to 1+ over visitor), not all potential.
+6. For ordinary plays not covered above: RBI equals runs scoring that are credited to the batter’s action, respecting any inning/game-end clamp.
+
+---
+
+State & Invariants (minimal)
+- PaResolution carries the authoritative details of the play (PA type, flags, runs scored, walk-off, etc.).
+- New Requirement: RBI is computed in the scorer and passed as an explicit delta to the box score; the box score must not infer RBI from runs or PA type.
+
+Invariant: With identical inputs, scorer outputs (runs, RBI) are deterministic; no RNG in scoring/recording.
+
+---
+
+Interfaces & File Touches (surgical)
+Engine
+- src/DiamondSim/Scoring/InningScorekeeper.cs
+  - Compute: int rbi = CalculateRbi(paResolution, clampedRuns, baseOutStateBeforePlay);
+  - Pass rbi into the box score tap (see signature change below).
+- src/DiamondSim/Stats/BoxScore.cs
+  - Change batter method to accept an explicit RBI delta:
+    - From: IncrementBatterStats(batterId, paType, runsScored, ...)
+    - To:   IncrementBatterStats(batterId, paType, runsScored, int rbiDelta, ...)
+  - Internals: line.RBI += rbiDelta; remove any RBI inference elsewhere.
+
+(If you have a BatterLine/PitcherLine model: no schema change; just ensure RBI is only mutated via rbiDelta.)
+
+Tests (new files / namespaces)
+- tests/DiamondSim.Tests/Scoring/RBIRulesTests.cs  (new)
+  - namespace DiamondSim.Tests.Scoring
+- tests/DiamondSim.Tests/Scoring/WalkOffRulesTests.cs  (already present; keep focused here)
+  - namespace DiamondSim.Tests.Scoring
+
+Optional namespace tidy (no behavior change)
+- BallInPlayTests.cs -> namespace DiamondSim.Tests.Probabilities
+- AtBatLoopTests.cs  -> namespace DiamondSim.Tests.Integration
+- Add [Category("Scoring")] / [Category("Probabilities")] / [Category("Integration")] as appropriate.
+
+---
+
+Validation Logic (deterministic)
+In InningScorekeeper after computing clampedRuns and before calling box taps:
+
+if (pa.IsWalkOff && !pa.IsHomeRun) {
+    rbi = RunsNeededToWin;                // clamp
+}
+else if (pa.IsHomeRun) {
+    rbi = TotalRunsOnPlay;               // batter+runners
+}
+else if (pa.IsSacFly) {
+    rbi = 1;
+}
+else if (pa.IsBasesLoadedWalkOrHbp) {
+    rbi = 1;
+}
+else if (pa.IsReachOnError) {
+    rbi = 0;
+}
+else {
+    rbi = RunsCreditedToBatterAction;    // ordinary case
+}
+BoxScore.IncrementBatterStats(batterId, paType, runsScored, rbi, ...);
+
+(Pseudocode only; use your existing helpers/flags. Do not duplicate run logic; RBI is derived from already-determined outcomes.)
+
+---
+
+Effects on Game State
+- No change to runs, outs, base movement, or walk-off/LOB semantics.
+- Only who gets RBI changes.
+- Team totals remain consistent (sum of batter RBI equals team runs minus exceptions like errors where RBI = 0).
+
+---
+
+Subtasks
+
+A. Engine Change (RBI pass-through)
+- Update scorer to compute RBI per rules above.
+- Update BoxScore API and internals to accept rbiDelta.
+- Ensure no other place increments RBI implicitly.
+
+B. Scoring Tests — RBI
+Create new file: tests/DiamondSim.Tests/Scoring/RBIRulesTests.cs
+- RBI_ROE_IsZero()
+- RBI_BasesLoadedWalk_IsOne()
+- RBI_BasesLoadedHbp_IsOne()
+- RBI_SacFly_IsOne()
+- RBI_HomeRun_AllRunnersPlusBatter()
+- RBI_WalkoffSingle_UsesClampedRuns()
+- RBI_WalkoffHomeRun_AllRunsCount()
+- RBI_Double_TwoScore_CreditsTwo()
+
+(Use your existing TestSnapshot/fixtures. Keep helpers file-local.)
+
+C. Scoring Tests — Walk-off (coverage consolidation)
+- Keep walk-off termination & clamp in WalkOffRulesTests.cs (already present).
+- Remove/trim duplicate “walkoff” cases from InningScoreTests.cs except one sanity check (to avoid split authority).
+
+D. Test Suite Hygiene (optional but recommended)
+- Add categories:
+  - Scoring: [Category("Scoring")] on RBI/WalkOff/LineScore/InningScore/EarnedRun/BoxScore.
+  - Probabilities: [Category("Probabilities")] on AtBat/Contact/BIP.
+  - Integration: [Category("Integration")] on AtBatLoop.
+- Namespace alignments as noted above (no file moves required if you prefer flat tree).
+
+---
+
+Test Scenarios (black-box; no code here)
+
+RBI
+1. ROE with runner on 3rd scores -> 0 RBI to batter; run increments team total.
+2. Bases-loaded walk -> exactly 1 RBI.
+3. Bases-loaded HBP -> exactly 1 RBI.
+4. Sac fly, R3 tags -> exactly 1 RBI; AB recorded per your box rules.
+5. Two-run double -> exactly 2 RBI.
+6. Walk-off single (tie game, R3) -> 1 RBI (clamped).
+7. Walk-off HR (down 2, 3 on) -> 4 RBI (all score).
+8. Ordinary solo HR -> 1 RBI.
+
+Walk-off (lives in WalkOffRulesTests)
+1. Walk-off single, bases loaded, game tied -> clamp 1 run; LOB=0.
+2. Walk-off double, down 1 with R2 -> clamp 2 runs; LOB=0.
+3. Walk-off grand slam, tie game -> 4 runs (HR exception); LOB=0.
+4. Solo walk-off HR, tie game -> 1 run; LOB=0.
+5. Top 9th scoring does not end game (sanity; no walk-off).
+
+---
+
+Acceptance Criteria
+- Box score only updates RBI via explicit rbiDelta; no inference from runs.
+- All new RBI tests pass; existing scoring/LOB/walk-off tests remain green.
+- Walk-off tests assert clamp vs HR-exception and LOB=0.
+- Determinism preserved: no RNG added to scoring paths.
+- One high-level walk-off sanity remains in InningScoreTests; others live in WalkOffRulesTests.
+
+---
+
+Migration & Risk
+- Signature change in BoxScore.IncrementBatterStats requires updating all call sites (scorer only).
+- Risk of double-counting RBI eliminated by removing inference.
+- CI should run test categories (Scoring, Probabilities, Integration) independently; no long-running tests introduced.
+
+---
+
+Notes
+- Pitcher responsibility for inherited runners will need a separate PRP/PRD (runner tagging at substitution + ER assignment).
+- Once this lands, we can safely wire the GameLoop and then the MLB comparison harness without misleading RBI totals.
