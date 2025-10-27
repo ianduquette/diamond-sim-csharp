@@ -1,6 +1,6 @@
-using NUnit.Framework;
+using DiamondSim.Tests.TestHelpers;
 
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.Scoring;
 
 /// <summary>
 /// Comprehensive tests for InningScorekeeper covering all critical scenarios from PRD Section 7.

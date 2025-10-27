@@ -1,4 +1,4 @@
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.TestHelpers;
 
 /// <summary>
 /// Represents a snapshot of game state for testing purposes.

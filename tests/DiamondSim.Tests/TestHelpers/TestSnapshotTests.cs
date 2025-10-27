@@ -1,6 +1,4 @@
-using NUnit.Framework;
-
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.TestHelpers;
 
 /// <summary>
 /// Tests for TestSnapshot helper to ensure it correctly captures game state

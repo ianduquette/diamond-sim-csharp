@@ -1,6 +1,6 @@
-using NUnit.Framework;
+using DiamondSim.Tests.TestHelpers;
 
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.Scoring;
 
 /// <summary>
 /// Tests for RBI (Runs Batted In) attribution according to official baseball rules.

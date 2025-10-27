@@ -1,6 +1,6 @@
 using DiamondSim;
 
-namespace Tests;
+namespace DiamondSim.Tests.Probabilities;
 
 [TestFixture]
 public class AtBatTests {

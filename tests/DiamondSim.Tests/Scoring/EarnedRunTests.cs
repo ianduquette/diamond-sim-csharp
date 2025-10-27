@@ -1,6 +1,4 @@
-using NUnit.Framework;
-
-namespace DiamondSim.Tests;
+namespace DiamondSim.Tests.Scoring;
 
 /// <summary>
 /// Tests for earned vs unearned run classification according to official baseball rules.

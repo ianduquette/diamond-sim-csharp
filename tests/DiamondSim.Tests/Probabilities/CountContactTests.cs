@@ -1,6 +1,4 @@
-using DiamondSim;
-
-namespace Tests;
+namespace DiamondSim.Tests.Probabilities;
 
 /// <summary>
 /// Tests for count-conditioned contact probability adjustments.
