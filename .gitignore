@@ -33,6 +33,7 @@ Thumbs.db
 .roo_history/
 .roo_sessions/
 *.mdtm
+SOURCE
 
 # Generated docs (if ephemeral)
 .prp/*_results*
