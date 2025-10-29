@@ -67,6 +67,11 @@ public sealed record BatterStats {
 
     /// <summary>
     /// Runs scored.
+    /// LIMITATION (v1): Only tracks runs scored during the batter's own plate appearance (home runs).
+    /// Does not track when a batter who reached base earlier scores as a runner on a subsequent play.
+    /// This would require tracking which lineup position occupies each base (not implemented in v1).
+    /// See .docs/box_score_runs_limitation.md for details.
+    /// NOTE: This field is retained in the data model but omitted from box score output in v1.
     /// </summary>
     public int R { get; init; }
 

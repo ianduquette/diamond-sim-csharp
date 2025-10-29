@@ -1,6 +1,18 @@
 namespace DiamondSim;
 
 /// <summary>
+/// Result of applying a plate appearance to game state.
+/// </summary>
+/// <param name="StateAfter">The updated game state after applying the plate appearance.</param>
+/// <param name="IsWalkoff">True if this plate appearance resulted in a walk-off win.</param>
+/// <param name="OutsAfter">The number of outs after applying the plate appearance (0-3).</param>
+public sealed record ApplyResult(
+    GameState StateAfter,
+    bool IsWalkoff,
+    int OutsAfter
+);
+
+/// <summary>
 /// Manages deterministic state transitions for applying plate appearance results to game state.
 /// This class handles runs, outs, bases, half-inning transitions, walk-offs, and extra innings.
 /// Also tracks line score (runs per inning) and LOB (left on base) statistics.
@@ -226,7 +238,7 @@ public class InningScorekeeper {
     /// 5. Check walk-off (bottom half, inning ≥ 9, home leads → set IsFinal=true)
     /// 6. Check half close (outs ≥ 3 → perform half-inning transition)
     /// </remarks>
-    public GameState ApplyPlateAppearance(GameState state, PaResolution resolution) {
+    public ApplyResult ApplyPlateAppearance(GameState state, PaResolution resolution) {
         // Safety guard: prevent infinite loops in extra innings
         if (state.Inning > 99) {
             throw new InvalidOperationException(
@@ -290,8 +302,9 @@ public class InningScorekeeper {
             newState.OnThird = false;
         }
 
-        // STEP 5: Calculate RBI (using clamped runs)
-        int rbi = CalculateRbi(resolution, clampedRuns, state);
+        // STEP 5: Use RBI from resolution (already calculated by BaseRunnerAdvancement)
+        // If resolution doesn't have RbiForBatter set (e.g., in tests), calculate it
+        int rbi = resolution.RbiForBatter > 0 ? resolution.RbiForBatter : CalculateRbi(resolution, clampedRuns, state);
 
         // STEP 6: Classify earned/unearned runs (using clamped runs)
         var (earnedRuns, unearnedRuns) = ClassifyRuns(resolution, clampedRuns);
@@ -307,8 +320,8 @@ public class InningScorekeeper {
         }
 
         // STEP 7: Track box score statistics (using clamped runs and calculated RBI)
-        // Determine if batter scored (true for HR, false otherwise in v0.2 simplification)
-        bool batterScored = resolution.Type == PaType.HomeRun;
+        // Determine if batter scored by checking if batter (FromBase=0) reached home (ToBase=4) in Moves
+        bool batterScored = resolution.Moves?.Any(m => m.FromBase == 0 && m.ToBase == 4 && m.Scored) ?? false;
 
         // Increment batter stats (using clamped runs and explicit RBI)
         BoxScore.IncrementBatterStats(
@@ -347,15 +360,16 @@ public class InningScorekeeper {
             HomeLOB.Add(0);
 
             newState.IsFinal = true;
-            return newState; // Game over - return immediately
+            return new ApplyResult(newState, true, 3); // Walk-off! Always 3 outs (or less if walk-off before 3rd out)
         }
 
         // STEP 10: Check half close (3 outs)
         if (newState.Outs >= 3) {
-            return PerformHalfInningTransition(newState, resolution, walkoffApplied);
+            var transitionedState = PerformHalfInningTransition(newState, resolution, walkoffApplied);
+            return new ApplyResult(transitionedState, false, 3); // Half-inning ended with 3 outs
         }
 
-        return newState;
+        return new ApplyResult(newState, false, newState.Outs); // Mid-inning, return current outs
     }
 
     /// <summary>

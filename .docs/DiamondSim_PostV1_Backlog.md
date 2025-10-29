@@ -6,8 +6,10 @@
 ---
 
 ## Game Loop & CLI
-- [ ] Single-game loop + CLI runner (seeded; deterministic)
-- [ ] Basic postgame summary (with loop): final score, line score, LOB, batting box (core), team pitching line (R/ER/UER), scoring summary
+- [x] Single-game loop + CLI runner (seeded; deterministic)
+- [x] Basic postgame summary (with loop): final score, line score, LOB, batting box (core), team pitching line (R/ER/UER), scoring summary
+- [ ] Important: Implement .docs\TEST_COVERAGE_REPORT.md
+- [ ] Allow for more than 9 innings. No ties
 - [ ] CLI flags: --seed, --out <file>, --playbyplay none|scoring|full, --format text|json
 
 ## Pitching Systems
@@ -16,6 +18,10 @@
 - [ ] Decisions ledger: W/L/S/BS based on lead-change and finishing pitcher rules
 - [ ] Fatigue model: pitch count/stamina decay + between-game recovery; hook into sub logic
 - [ ] Bullpen AI (minimal): choose relievers by fatigue/matchup/leverage
+
+## Scoring
+- [ ] Properly attribute runs to players. (.docs\box_score_runs_limitation.md)
+- [ ] Properly attribute LOBS (left on base to players)
 
 ## Lineups, DH & Substitutions
 - [ ] Pinch-hit / pinch-run / defensive replacements with lineup integrity
@@ -34,6 +40,7 @@
 ## Baserunning & Situational
 - [ ] SB/CS, pickoffs, WP/PB (if desired)
 - [ ] Tag-up logic for SF; simple advancement risk model (later)
+- [ ] Close calls, should runners 'go for it'
 
 ## Probability / Physics Tuning
 - [ ] League-fit benchmarks vs MLB 2023/2024 (K%, BB%, HR%, BABIP, XBH mix, R/G) with cited sources

@@ -32,14 +32,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single
-        );
+            Type: PaType.Single,
+        Tag: OutcomeTag.Single);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Home should score exactly 1 run to win");
             Assert.That(snapshot.AwayScore, Is.EqualTo(3), "Away score unchanged");
@@ -64,14 +64,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 4,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun
-        );
+            Type: PaType.HomeRun,
+        Tag: OutcomeTag.HR);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(7), "All 4 runs count for walk-off HR");
             Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
@@ -96,14 +96,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 4,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun
-        );
+            Type: PaType.HomeRun,
+        Tag: OutcomeTag.HR);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(6), "All 4 runs count for walk-off grand slam");
             Assert.That(snapshot.AwayScore, Is.EqualTo(2), "Away score unchanged");
@@ -128,14 +128,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun
-        );
+            Type: PaType.HomeRun,
+        Tag: OutcomeTag.HR);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(2), "Solo HR counts as 1 run");
             Assert.That(snapshot.AwayScore, Is.EqualTo(1), "Away score unchanged");
@@ -160,14 +160,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 2,
             NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
-            Type: PaType.Double
-        );
+            Type: PaType.Double,
+        Tag: OutcomeTag.Double);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(5), "Only 2 runs needed to win");
             Assert.That(snapshot.AwayScore, Is.EqualTo(4), "Away score unchanged");
@@ -192,14 +192,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
-            Type: PaType.Single
-        );
+            Type: PaType.Single,
+        Tag: OutcomeTag.Single);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(1), "Only 1 run needed to win");
             Assert.That(snapshot.AwayScore, Is.EqualTo(0), "Away score unchanged");
@@ -227,14 +227,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single
-        );
+            Type: PaType.Single,
+        Tag: OutcomeTag.Single);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.AwayScore, Is.EqualTo(3), "Away scores in top 9th");
             Assert.That(snapshot.HomeScore, Is.EqualTo(2), "Home score unchanged");
@@ -259,14 +259,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single
-        );
+            Type: PaType.Single,
+        Tag: OutcomeTag.Single);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Home wins in extras");
             Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
@@ -291,14 +291,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 3,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun
-        );
+            Type: PaType.HomeRun,
+        Tag: OutcomeTag.HR);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(8), "All 3 runs count for walk-off HR in extras");
             Assert.That(snapshot.AwayScore, Is.EqualTo(6), "Away score unchanged");
@@ -323,14 +323,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single
-        );
+            Type: PaType.Single,
+        Tag: OutcomeTag.Single);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Run counts normally");
             Assert.That(snapshot.AwayScore, Is.EqualTo(2), "Away score unchanged");
@@ -355,14 +355,14 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
-            Type: PaType.BB
-        );
+            Type: PaType.BB,
+        Tag: OutcomeTag.BB);
 
         // Act
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Only 1 run needed to win");
             Assert.That(snapshot.AwayScore, Is.EqualTo(3), "Away score unchanged");
@@ -391,7 +391,7 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
-            Type: PaType.ReachOnError,
+            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
         );
@@ -400,7 +400,7 @@ public class WalkoffTests {
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Only 1 run needed to win");
             Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
@@ -409,7 +409,7 @@ public class WalkoffTests {
             Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
             Assert.That(snapshot.OnSecond, Is.False, "Bases cleared on walk-off");
             Assert.That(snapshot.OnThird, Is.False, "Bases cleared on walk-off");
-            Assert.That(result.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (ROE)");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (ROE)");
         });
     }
 
@@ -434,7 +434,7 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
-            Type: PaType.HBP,
+            Type: PaType.HBP,Tag: OutcomeTag.HBP,
             HadError: false
         );
 
@@ -442,7 +442,7 @@ public class WalkoffTests {
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Only 1 run needed");
             Assert.That(snapshot.AwayScore, Is.EqualTo(3));
@@ -451,7 +451,7 @@ public class WalkoffTests {
             Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
             Assert.That(snapshot.OnSecond, Is.False, "Bases cleared");
             Assert.That(snapshot.OnThird, Is.False, "Bases cleared");
-            Assert.That(result.HomeEarnedRuns, Is.GreaterThan(0), "Run is earned (no error)");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.GreaterThan(0), "Run is earned (no error)");
         });
     }
 
@@ -477,7 +477,7 @@ public class WalkoffTests {
             OutsAdded: 1,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.InPlayOut,
+            Type: PaType.InPlayOut,Tag: OutcomeTag.InPlayOut,
             Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true),
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
@@ -487,12 +487,12 @@ public class WalkoffTests {
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(3), "Walk-off on sac fly");
             Assert.That(snapshot.IsFinal, Is.True);
             Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
-            Assert.That(result.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (error-assisted)");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (error-assisted)");
         });
     }
 
@@ -517,7 +517,7 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 2,  // Both runners would score
             NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
-            Type: PaType.Double,
+            Type: PaType.Double,Tag: OutcomeTag.Double,
             HadError: false
         );
 
@@ -525,7 +525,7 @@ public class WalkoffTests {
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Exactly 2 runs to win");
             Assert.That(snapshot.AwayScore, Is.EqualTo(5));
@@ -533,7 +533,7 @@ public class WalkoffTests {
             Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
             Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
             Assert.That(snapshot.OnSecond, Is.False, "Batter not on 2nd (walk-off suppresses)");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(2), "Both runs earned");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(2), "Both runs earned");
         });
     }
 
@@ -558,7 +558,7 @@ public class WalkoffTests {
             OutsAdded: 0,
             RunsScored: 4,  // Grand slam
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun,
+            Type: PaType.HomeRun,Tag: OutcomeTag.HR,
             HadError: false
         );
 
@@ -566,13 +566,13 @@ public class WalkoffTests {
         var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.ToTestSnapshot();
+        var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.HomeScore, Is.EqualTo(7), "ALL 4 runs count (HR exception)");
             Assert.That(snapshot.AwayScore, Is.EqualTo(5));
             Assert.That(snapshot.IsFinal, Is.True);
             Assert.That(_scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(4), "All runs earned");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(4), "All runs earned");
         });
     }
 }

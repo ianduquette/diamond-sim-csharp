@@ -38,14 +38,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError
+            Type: PaType.ReachOnError,
+            Tag: OutcomeTag.ROE
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(1), "Run should count");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(1), "Run should count");
         var batterStats = _scorer.BoxScore.AwayBatters[0];
         Assert.That(batterStats.RBI, Is.EqualTo(0), "RBI should be 0 for ROE per Rule 9.06(g)");
     }
@@ -74,14 +75,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
-            Type: PaType.BB
+            Type: PaType.BB,
+            Tag: OutcomeTag.BB
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(1), "Run should count");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(1), "Run should count");
         var batterStats = _scorer.BoxScore.AwayBatters[0];
         Assert.That(batterStats.RBI, Is.EqualTo(1), "RBI should be exactly 1 for bases-loaded walk per Rule 9.04(a)(2)");
     }
@@ -110,14 +112,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true),
-            Type: PaType.HBP
+            Type: PaType.HBP,
+            Tag: OutcomeTag.HBP
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(1), "Run should count");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(1), "Run should count");
         var batterStats = _scorer.BoxScore.AwayBatters[1];
         Assert.That(batterStats.RBI, Is.EqualTo(1), "RBI should be exactly 1 for bases-loaded HBP per Rule 9.04(a)(2)");
     }
@@ -147,6 +150,7 @@ public class RbiAttributionTests {
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
             Type: PaType.InPlayOut,
+            Tag: OutcomeTag.SF,
             Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true)
         );
 
@@ -154,8 +158,8 @@ public class RbiAttributionTests {
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(1), "Run should count");
-        Assert.That(result.Outs, Is.EqualTo(2), "Outs should increment");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(1), "Run should count");
+        Assert.That(result.StateAfter.Outs, Is.EqualTo(2), "Outs should increment");
         var batterStats = _scorer.BoxScore.AwayBatters[2];
         Assert.That(batterStats.RBI, Is.EqualTo(1), "RBI should be exactly 1 for sac fly per Rule 9.04(a)(3)");
     }
@@ -184,14 +188,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 4,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun
+            Type: PaType.HomeRun,
+            Tag: OutcomeTag.HR
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(4), "All 4 runs should count");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(4), "All 4 runs should count");
         var batterStats = _scorer.BoxScore.AwayBatters[3];
         Assert.That(batterStats.RBI, Is.EqualTo(4), "RBI should be 4 (all runners + batter) per Rule 9.04(a)(1)");
     }
@@ -220,15 +225,16 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single
+            Type: PaType.Single,
+            Tag: OutcomeTag.Single
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.HomeScore, Is.EqualTo(4), "Only 1 run should count (walk-off clamping)");
-        Assert.That(result.IsFinal, Is.True, "Game should be final");
+        Assert.That(result.StateAfter.HomeScore, Is.EqualTo(4), "Only 1 run should count (walk-off clamping)");
+        Assert.That(result.StateAfter.IsFinal, Is.True, "Game should be final");
         var batterStats = _scorer.BoxScore.HomeBatters[4];
         Assert.That(batterStats.RBI, Is.EqualTo(1), "RBI should be 1 (clamped) for walk-off single");
     }
@@ -257,15 +263,16 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 4,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun
+            Type: PaType.HomeRun,
+            Tag: OutcomeTag.HR
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.HomeScore, Is.EqualTo(7), "All 4 runs should count (HR exception to walk-off clamping)");
-        Assert.That(result.IsFinal, Is.True, "Game should be final");
+        Assert.That(result.StateAfter.HomeScore, Is.EqualTo(7), "All 4 runs should count (HR exception to walk-off clamping)");
+        Assert.That(result.StateAfter.IsFinal, Is.True, "Game should be final");
         var batterStats = _scorer.BoxScore.HomeBatters[5];
         Assert.That(batterStats.RBI, Is.EqualTo(4), "RBI should be 4 (HR exception) for walk-off grand slam");
     }
@@ -294,14 +301,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 2,
             NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
-            Type: PaType.Double
+            Type: PaType.Double,
+            Tag: OutcomeTag.Double
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(2), "Both runs should count");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(2), "Both runs should count");
         var batterStats = _scorer.BoxScore.AwayBatters[6];
         Assert.That(batterStats.RBI, Is.EqualTo(2), "RBI should be exactly 2 for two-run double");
     }
@@ -330,14 +338,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 0,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: false),
-            Type: PaType.BB
+            Type: PaType.BB,
+            Tag: OutcomeTag.BB
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(0), "No runs should score");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(0), "No runs should score");
         var batterStats = _scorer.BoxScore.AwayBatters[7];
         Assert.That(batterStats.RBI, Is.EqualTo(0), "RBI should be 0 for walk without bases loaded");
     }
@@ -366,14 +375,15 @@ public class RbiAttributionTests {
             OutsAdded: 0,
             RunsScored: 0,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single
+            Type: PaType.Single,
+            Tag: OutcomeTag.Single
         );
 
         // Act
         var result = _scorer.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        Assert.That(result.AwayScore, Is.EqualTo(0), "No runs should score");
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(0), "No runs should score");
         var batterStats = _scorer.BoxScore.AwayBatters[8];
         Assert.That(batterStats.RBI, Is.EqualTo(0), "RBI should be 0 when no runs score");
     }

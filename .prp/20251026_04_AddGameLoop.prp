@@ -1,195 +1,138 @@
-# Single-Game Simulator & Text Report (.prp) — v1 Simple
+# Generate PRD (do NOT implement code) — Roo Tasking Block
 
-> Spec only — no code here
-> Keep scope small and deterministic where required
+> This file instructs Roo to **produce a Product Requirements Document (.prd)** only.
+> **No code, no scaffolds, no class stubs, no CLI project creation.**
 
-Status: Draft
-Created: 2025-10-26
-Epic: Baseball Simulation Engine – Game Loop & Output
-Depends on: RBI Attribution PRD (Rev 1), LOB Instant-of-Third-Out .prp
+## Task
+Create a single Markdown **PRD** for the feature **“Single-Game Simulator & Text Report — v1 Simple”** based on the requirements below.
+
+## Deliverable
+- **One** Markdown document named: `PRD-GameLoop-v1.md` containing:
+  1) Executive Summary
+  2) Goals / Non-Goals
+  3) User Inputs & CLI Contract
+  4) Determinism & RNG Scope
+  5) Game Flow (state machine)
+  6) Output Shape (report spec)
+  7) Validation & Acceptance Criteria
+  8) Open Questions (explicitly list any ambiguities)
+  9) Risks & Future Work
+
+**Output format:** Markdown text only. Do **not** include code blocks that contain compilable code. Pseudocode/state tables are fine.
+
+## Non-Goals (Important)
+- Do **not** generate source code in any language.
+- Do **not** create or reference projects, files, or directories.
+- Do **not** invent APIs or class designs; keep it product/behavioral.
 
 ---
 
-## Goal
+# Source Requirements (authoritative)
+
+## Scope Summary
 Run one 9-inning baseball game from a seed and two teams, and produce a clear **text** report only:
 - inning line score
 - per-plate-appearance play log (no pitch-by-pitch)
 - final team totals and **box scores** (batting + pitching)
-
-No JSON, no extras UI, no advanced options.
-
----
+No JSON, no UI, no advanced options.
 
 ## Out of Scope (v1)
 - No bullpen changes, fatigue, or injuries
 - No extra innings (ties allowed)
-- No park effects, weather, or lineup AI decisions beyond random lineup generation
+- No park effects or weather
 - No pitch-by-pitch logging
 - No JSON or additional output formats
 
----
-
-## Inputs (user-facing)
+## Inputs
 - **Seed (optional)**: integer. If omitted, game uses a random seed and **prints the chosen seed** in the header for reproducibility.
-- **Teams**:
-  - Home (name), Away (name)
-  - **Lineup source**:
-    - If a batting lineup is **provided**, use it as-is (must be 9 hitters; DH required; pitcher never hits).
-    - If a lineup is **not provided**, **generate a random lineup** (see “Random Lineup” below).
-- **Designated Hitter**: **Always ON** in v1. Pitchers never bat.
+- **Teams**: two display names only (Home, Away).
+- **Lineups**: always **auto-generated** (see below).
+- **Designated Hitter**: **Always ON**. Pitchers never bat.
 
----
-
-## Random Lineup (v1 rules)
-When no lineup is provided for a team:
-- Create a **9-spot batting order including DH** (pitcher does not bat).
-- Use a simple random order of hitters drawn from the team’s available non-pitcher position players.
-  - If no roster is supplied, instantiate **nine league-average hitters** with generic names (e.g., “Hitter 1”…“Hitter 9”).
-- Batting order is randomized **once** at game start based on the game seed.
-- Defensive positions are not enforced in v1 (informational only).
-
----
+## Auto-Generated Lineups
+- Each team gets **nine generic hitters** named `<Team> 1` … `<Team> 9`.
+- Order is randomized **once** at game start based on the game seed.
+- No positions, substitutions, or role validation.
+- The **9th slot** is displayed as DH for readability.
+- Pitchers never appear as batters.
 
 ## Game Flow (high level)
-1. Initialize game: Top 1st, 0–0, bases empty, 0 outs. One starting pitcher per team for the full game (no substitutions).
+1. Initialize game: Top 1st, 0–0, bases empty, 0 outs. One starting pitcher per team for the full game.
 2. For each half-inning:
-   - Resolve plate appearances (PAs) to terminal results (K/BB/HBP/InPlayOut/1B/2B/3B/HR/ROE).
-   - Apply scoring with existing engine rules (RBI attribution fix; walk-off logic; LOB snapshot).
+   - Resolve plate appearances to terminal results (`K, BB, HBP, InPlayOut, 1B, 2B, 3B, HR, ROE`).
+   - Apply scoring with engine rules (RBI attribution fix, walk-off logic, LOB snapshot).
    - Stop the half at 3 outs.
 3. **Skip Bottom 9** if the home team leads after the Top 9 (show “X” in the line score).
 4. **Walk-off handling**:
-   - Non-HR: clamp runs to the **minimum needed to win**, then end game; **LOB = 0**.
-   - HR: **all** runners (and batter) score; **LOB = 0**; end game.
-5. If tied after 9, **declare a tie** (v1; no extras).
-
----
+   - Non-HR: clamp runs to **minimum needed to win**, then end game; `LOB = 0`.
+   - HR: all runners + batter score; `LOB = 0`; end game.
+5. If tied after 9, declare a **tie** (v1).
 
 ## Output (text only)
 **Header**
 - `AWAY @ HOME — Seed: 12345`
-- Date/time stamp (local), “DH: ON”, “Extras: OFF (tie allowed)”.
-- If seed omitted by user, print `Seed: <generated>`.
+- Date/time stamp (local), `DH: ON`, `Extras: OFF (tie allowed)`
+- If seed omitted, print `Seed: <generated>`.
 
 **Running Line Score**
-- Inning line per team: `1 2 3 4 5 6 7 8 9 | R H E`
+- `1 2 3 4 5 6 7 8 9 | R H E`
 - Home shows “X” for skipped B9.
 
-**Play Log (per PA, no pitches)**
-- One line per PA:
-  - `[Top 1] #1 Smith vs Verlander — Single to RF. R1 to 1B.`
-  - `[Top 1] #2 Jones — K swinging. 1 out.`
-  - Markers: `BB`, `HBP`, `SF`, `ROE`, `DP`, `TP`, `E6`, `IBB` (if modeled), `Walk-off: …`
-- Keep phrasing stable and compact; no randomness in wording.
+**Play Log (per PA)**
+- Stable phrasing; no random wording. Examples:
+  - `[Top 1] #1 Comet 1 vs Shark P — Single to RF. R1 to 1B.`
+  - `[Top 1] #2 Comet 2 — K swinging. 1 out.`
 
 **Team Totals**
 - `Final: AWAY 3 — HOME 4`
 - `R/H/E`, team LOB.
 
 **Box Scores**
-- **Batting (per team)**: `AB  R  H  RBI  BB  K  HR  LOB`
-- **Pitching (per team)**: `IP  BF  H  R  ER  BB  K  HR`
-- Include every player who appeared.
+- **Batting:** `AB  R  H  RBI  BB  K  HR  LOB`
+- **Pitching:** `IP  BF  H  R  ER  BB  K  HR`
+- Each team lists all nine batters (order shown) and one pitcher.
+- Numeric columns right-aligned.
 
 **Footer**
 - `Seed: 12345`
-- Optional one-line hash of the play log for snapshot testing (e.g., `LogHash: abc123`).
+- `LogHash: abc123` (optional snapshot hash)
+
+## Determinism Scope
+- One RNG seeded only by `--seed` drives lineup and PA outcomes.
+- No other randomness; timestamp excluded from tests.
+
+## Modeled vs Not Modeled (v1)
+- **Modeled:** K, BB, HBP, InPlayOut, 1B, 2B, 3B, HR, ROE, SF, DP, TP.
+- **Not modeled:** IBB, pickoffs, balks, WP, PB, steals/CS between PAs, catcher interference.
+- Phrase set fixed; no synonyms.
+
+## Errors & Team "E"
+- “E” = count of ROE events + any explicit fielding errors emitted (e.g., E6 on advances).
+- If none emitted, `E = ROE`.
+
+## Box Score Definitions
+- **Batting:** AB excludes BB/HBP/SF. RBI rules: ROE 0; BL BB/HBP 1; SF 1; HR all; walk-off clamp.
+- **Pitching:** IP in thirds (.0/.1/.2), BF = batters faced, ER excludes runs due to errors, H excludes ROE.
+- No W/L/S/BS in v1.
+
+## Walk-off Acceptance
+- Non-HR: clamp to minimum needed; no further advances; LOB = 0; end game.
+- HR: all runners + batter score; LOB = 0; end game.
+
+## Output Formatting
+- Line score always 9 columns; home “X” if skipped B9.
+- Batters listed in order; one pitcher line per team.
+- Numeric columns right-aligned; names left-aligned.
+
+## LogHash
+- SHA-256 over normalized play-log lines only (no header, timestamp, totals, boxes).
+- Emit as `LogHash: <hex>`.
 
 ---
 
-## Console App & CLI Contract (v1)
+## Acceptance Checklist (for the PRD Roo will output)
+- The PRD contains **no source code** or implementation details.
+- All sections listed under **Deliverable** are present.
+- Ambiguities are captured under **Open Questions**.
+- Acceptance criteria are testable and map to the Output shape above.
 
-### Project
-- New console project: `src/DiamondSim.Cli/`
-- Entry point runs exactly one game per invocation.
-
-### Invocation (dotnet)
-- Dev usage: `dotnet run --project src/DiamondSim.Cli -- [ARGS...]`
-- Published usage (optional later): `diamondsim [ARGS...]`
-
-### Required Behavior
-- Runs a single 9-inning game and writes **text** to STDOUT (and optionally to a file via `--out`).
-- No pitch-by-pitch; per-PA lines only.
-- DH is **always ON**; pitcher never bats.
-- If no seed is provided, generate one **and print it** in the header.
-
-### Arguments
-- `--home <NAME>` (required) — Home team name.
-- `--away <NAME>` (required) — Away team name.
-- `--seed <INT>` (optional) — Deterministic seed. If omitted, a random seed is chosen and printed.
-- `--home-lineup "<CSV>"` (optional) — 9 hitters (comma-separated). If omitted, generate random lineup.
-- `--away-lineup "<CSV>"` (optional) — 9 hitters (comma-separated). If omitted, generate random lineup.
-- `--out <PATH>` (optional) — Write the same text output to this file in addition to STDOUT.
-- `--log-level <plays|summary>` (optional) — Default `plays`.
-- `--version` — Prints version and exits.
-- `--help` or `-h` — Prints usage and exits.
-
-**Notes**
-- Lineup entries are display names only (positions ignored in v1).
-- Extras: OFF (ties allowed); DH: ON (fixed).
-
-### Examples
-- Deterministic run with provided lineups:
-  ```
-  dotnet run --project src/DiamondSim.Cli --     --home Comets --away Sharks --seed 12345     --home-lineup "A.Alvarez,B.Brown,C.Chang,D.Diaz,E.Evans,F.Ford,G.Gao,H.Holt,I.Ishikawa"     --away-lineup "J.Jones,K.Kent,L.Liu,M.Miller,N.Nash,O.Ortega,P.Perez,Q.Quinn,R.Ross"
-  ```
-
-- Random seed + random lineups, also save to file:
-  ```
-  dotnet run --project src/DiamondSim.Cli --     --home Comets --away Sharks --out game.txt
-  ```
-
-- Shorter log:
-  ```
-  dotnet run --project src/DiamondSim.Cli --     --home Comets --away Sharks --seed 42 --log-level summary
-  ```
-
-### Output (to STDOUT and optional `--out`)
-- **Header**: `Sharks @ Comets — Seed: 8675309 — DH: ON — Extras: OFF (tie allowed)`
-  - When lineups were generated, print both batting orders beneath the header:
-    ```
-    Away lineup: J.Jones, K.Kent, L.Liu, M.Miller, N.Nash, O.Ortega, P.Perez, Q.Quinn, R.Ross (DH)
-    Home lineup: A.Alvarez, B.Brown, C.Chang, D.Diaz, E.Evans, F.Ford, G.Gao, H.Holt, I.Ishikawa (DH)
-    ```
-- **Running line score** per team (9 columns) with `X` for skipped B9.
-- **Play log** per PA (no pitch logs), stable phrasing.
-- **Team totals**: `Final: AWAY x — HOME y` + `R/H/E`, team LOB.
-- **Box scores** (batters, pitchers).
-- **Footer**: `Seed: <INT>` and optional deterministic log hash (single line).
-
-### Validation & Acceptance (CLI-specific)
-**Inputs & Validation**
-- `--home` and `--away` must be provided; else exit with usage and `exit code 2`.
-- If a lineup is provided, it **must** contain exactly 9 names; else `exit code 2`.
-- Reject any attempt to include a pitcher in the batting lineup (v1 rule: pitchers never bat).
-- Unknown flags → print usage; `exit code 2`.
-
-**Determinism**
-- With the same `--seed`, the entire text output (except timestamp) is identical across runs.
-- When `--seed` omitted, the chosen random seed is printed and can be reused to reproduce output.
-
-**Output Shape**
-- Line score always shows 9 innings; Home uses `X` for skipped B9.
-- Play log includes every PA in order; no pitch-by-pitch lines.
-- Box scores include every batter/pitcher who appeared.
-- Totals reconcile: line score ↔ team R/H/E ↔ event log; RBI sums match v1 rules (ROE=0; BL BB/HBP=1; SF=1; HR=all; walk-off clamp).
-
-**Rule Fidelity (engine pass-through)**
-- Walk-off: non-HR clamps to minimum needed; HR scores all; both set LOB=0; game ends.
-- LOB computed from instant-of-third-out snapshot for half-ending plays.
-
-**Exit Codes**
-- `0` success.
-- `2` usage/validation error (bad args, wrong lineup size, etc.).
-- `1` unexpected error.
-
-**Help Text**
-- `--help` prints:
-  - brief description
-  - required/optional args
-  - examples (one deterministic, one random)
-  - notes: “DH: ON; Extras: OFF (tie allowed); no pitch-by-pitch; text only.”
-
-### Logging / Noise
-- Only the game report goes to STDOUT.
-- Validation and usage go to STDERR.
-- No debug spew.

@@ -90,6 +90,9 @@ public class AtBatSimulator {
     private const double FoulRateWithTwoStrikes = 0.58; // 58% fouls with 2 strikes (defensive) - tuned for target BIP%
     private const double FoulRateOtherCounts = 0.43; // 43% fouls in other counts - tuned for target BIP%
 
+    // Hit By Pitch Rate (rare event)
+    private const double HitByPitchRate = 0.01; // 1% chance per pitch - realistic MLB rate (~1% of PA)
+
     // Safety limit to prevent infinite loops
     private const int MaxPitchesPerAtBat = 50;
 
@@ -116,13 +119,22 @@ public class AtBatSimulator {
         while (!state.IsTerminal() && pitchCount < MaxPitchesPerAtBat) {
             pitchCount++;
 
-            // 1. Zone Decision: Is the pitch in the strike zone?
+            // 1. Check for HBP (rare event, checked first)
+            if (_random.NextDouble() < HitByPitchRate) {
+                return new AtBatResult(
+                    AtBatTerminal.HitByPitch,
+                    state.ToString(),
+                    pitchCount
+                );
+            }
+
+            // 2. Zone Decision: Is the pitch in the strike zone?
             bool inZone = DetermineZone(pitcher.Control);
 
-            // 2. Swing Decision: Does the batter swing?
+            // 3. Swing Decision: Does the batter swing?
             bool swings = DetermineSwing(batter.Patience, inZone);
 
-            // 3. Determine pitch outcome
+            // 4. Determine pitch outcome
             PitchOutcome outcome = DeterminePitchOutcome(
                 inZone,
                 swings,
@@ -132,10 +144,10 @@ public class AtBatSimulator {
                 state.Strikes
             );
 
-            // 4. Update count based on outcome
+            // 5. Update count based on outcome
             UpdateCount(state, outcome);
 
-            // 5. Check for terminal outcome
+            // 6. Check for terminal outcome
             if (outcome == PitchOutcome.InPlay) {
                 return new AtBatResult(
                     AtBatTerminal.BallInPlay,

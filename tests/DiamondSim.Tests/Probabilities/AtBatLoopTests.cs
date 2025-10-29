@@ -29,6 +29,7 @@ public class AtBatLoopTests {
         int strikeouts = 0;
         int walks = 0;
         int ballsInPlay = 0;
+        int hitByPitch = 0;
 
         // Act
         for (int i = 0; i < trials; i++) {
@@ -44,6 +45,9 @@ public class AtBatLoopTests {
                 case AtBatTerminal.BallInPlay:
                     ballsInPlay++;
                     break;
+                case AtBatTerminal.HitByPitch:
+                    hitByPitch++;
+                    break;
             }
         }
 
@@ -51,24 +55,26 @@ public class AtBatLoopTests {
         double kRate = (double)strikeouts / trials;
         double bbRate = (double)walks / trials;
         double bipRate = (double)ballsInPlay / trials;
+        double hbpRate = (double)hitByPitch / trials;
 
         // Assert: Verify distributions fall within expected ranges
         Assert.That(kRate, Is.InRange(0.18, 0.28),
             $"K% should be 18-28%, got {kRate:P1}");
-        Assert.That(bbRate, Is.InRange(0.07, 0.12),
-            $"BB% should be 7-12%, got {bbRate:P1}");
+        Assert.That(bbRate, Is.InRange(0.06, 0.12),
+            $"BB% should be 6-12%, got {bbRate:P1}");
         Assert.That(bipRate, Is.InRange(0.55, 0.70),
             $"BIP% should be 55-70%, got {bipRate:P1}");
 
         // Assert: Verify all outcomes sum to 100%
-        double total = kRate + bbRate + bipRate;
+        double total = kRate + bbRate + bipRate + hbpRate;
         Assert.That(total, Is.EqualTo(1.0).Within(0.0001),
-            $"K% + BB% + BIP% should equal 100%, got {total:P1}");
+            $"K% + BB% + BIP% + HBP% should equal 100%, got {total:P1}");
 
         // Output actual distributions for reference
         TestContext.Out.WriteLine($"Strikeout Rate: {kRate:P2} ({strikeouts}/{trials})");
         TestContext.Out.WriteLine($"Walk Rate: {bbRate:P2} ({walks}/{trials})");
         TestContext.Out.WriteLine($"Ball-In-Play Rate: {bipRate:P2} ({ballsInPlay}/{trials})");
+        TestContext.Out.WriteLine($"Hit-By-Pitch Rate: {hbpRate:P2} ({hitByPitch}/{trials})");
     }
 
     /// <summary>
@@ -203,7 +209,8 @@ public class AtBatLoopTests {
             Assert.That(result.Terminal, Is.AnyOf(
                 AtBatTerminal.Strikeout,
                 AtBatTerminal.Walk,
-                AtBatTerminal.BallInPlay
+                AtBatTerminal.BallInPlay,
+                AtBatTerminal.HitByPitch
             ));
 
             // Verify pitch count is reasonable (not stuck in infinite loop)
@@ -247,7 +254,8 @@ public class AtBatLoopTests {
             Assert.That(result.Terminal, Is.AnyOf(
                 AtBatTerminal.Strikeout,
                 AtBatTerminal.Walk,
-                AtBatTerminal.BallInPlay
+                AtBatTerminal.BallInPlay,
+                AtBatTerminal.HitByPitch
             ));
         }
 
@@ -279,7 +287,8 @@ public class AtBatLoopTests {
         Assert.That(result.Terminal, Is.AnyOf(
             AtBatTerminal.Strikeout,
             AtBatTerminal.Walk,
-            AtBatTerminal.BallInPlay
+            AtBatTerminal.BallInPlay,
+            AtBatTerminal.HitByPitch
         ));
         Assert.That(result.FinalCount, Is.Not.Null.And.Not.Empty);
         Assert.That(result.PitchCount, Is.GreaterThan(0));

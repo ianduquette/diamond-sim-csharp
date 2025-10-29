@@ -31,7 +31,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError,
+            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
             HadError: true
         );
 
@@ -40,11 +40,11 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.AwayScore, Is.EqualTo(3), "Run scores");
-            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "No earned runs for ROE");
-            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned run for ROE");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(0), "Home earned runs unchanged");
-            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(0), "Home unearned runs unchanged");
+            Assert.That(result.StateAfter.AwayScore, Is.EqualTo(3), "Run scores");
+            Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(0), "No earned runs for ROE");
+            Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned run for ROE");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(0), "Home earned runs unchanged");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(0), "Home unearned runs unchanged");
         });
     }
 
@@ -64,7 +64,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,
+            Type: PaType.Single,Tag: OutcomeTag.Single,
             HadError: false
         );
 
@@ -73,11 +73,11 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.HomeScore, Is.EqualTo(3), "Run scores");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(1), "1 earned run for clean single");
-            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(0), "No unearned runs");
-            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "Away earned runs unchanged");
-            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(0), "Away unearned runs unchanged");
+            Assert.That(result.StateAfter.HomeScore, Is.EqualTo(3), "Run scores");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(1), "1 earned run for clean single");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(0), "No unearned runs");
+            Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(0), "Away earned runs unchanged");
+            Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(0), "Away unearned runs unchanged");
         });
     }
 
@@ -97,7 +97,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,
+            Type: PaType.Single,Tag: OutcomeTag.Single,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: false)
         );
@@ -107,9 +107,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.AwayScore, Is.EqualTo(2), "Run scores");
-            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "No earned runs (error assisted)");
-            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned run (error assisted)");
+            Assert.That(result.StateAfter.AwayScore, Is.EqualTo(2), "Run scores");
+            Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(0), "No earned runs (error assisted)");
+            Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned run (error assisted)");
         });
     }
 
@@ -129,7 +129,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,
+            Type: PaType.Single,Tag: OutcomeTag.Single,
             HadError: true,
             AdvanceOnError: null  // Error didn't affect scoring runner
         );
@@ -139,9 +139,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.HomeScore, Is.EqualTo(3), "Run scores");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(1), "1 earned run (error didn't affect scoring)");
-            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(0), "No unearned runs");
+            Assert.That(result.StateAfter.HomeScore, Is.EqualTo(3), "Run scores");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(1), "1 earned run (error didn't affect scoring)");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(0), "No unearned runs");
         });
     }
 
@@ -161,7 +161,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 4,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun,
+            Type: PaType.HomeRun,Tag: OutcomeTag.HR,
             HadError: false
         );
 
@@ -170,9 +170,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.AwayScore, Is.EqualTo(6), "4 runs score");
-            Assert.That(result.AwayEarnedRuns, Is.EqualTo(4), "All 4 runs earned");
-            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(0), "No unearned runs");
+            Assert.That(result.StateAfter.AwayScore, Is.EqualTo(6), "4 runs score");
+            Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(4), "All 4 runs earned");
+            Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(0), "No unearned runs");
         });
     }
 
@@ -192,7 +192,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 3,
             NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
-            Type: PaType.Double,
+            Type: PaType.Double,Tag: OutcomeTag.Double,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: true, OnSecond: false, OnThird: false)
         );
@@ -202,9 +202,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.HomeScore, Is.EqualTo(6), "3 runs score");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(0), "No earned runs (error assisted)");
-            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(3), "All 3 runs unearned (v1-light: any error = all unearned)");
+            Assert.That(result.StateAfter.HomeScore, Is.EqualTo(6), "3 runs score");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(0), "No earned runs (error assisted)");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(3), "All 3 runs unearned (v1-light: any error = all unearned)");
         });
     }
 
@@ -224,7 +224,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun,
+            Type: PaType.HomeRun,Tag: OutcomeTag.HR,
             HadError: false
         );
 
@@ -233,10 +233,10 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.HomeScore, Is.EqualTo(3), "Walk-off HR");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(1), "1 earned run");
-            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(0), "No unearned runs");
-            Assert.That(result.IsFinal, Is.True, "Game ends");
+            Assert.That(result.StateAfter.HomeScore, Is.EqualTo(3), "Walk-off HR");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(1), "1 earned run");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(0), "No unearned runs");
+            Assert.That(result.StateAfter.IsFinal, Is.True, "Game ends");
         });
     }
 
@@ -258,47 +258,47 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,
+            Type: PaType.Single,Tag: OutcomeTag.Single,
             HadError: false
         );
         var result1 = _scorekeeper.ApplyPlateAppearance(state1, resolution1);
 
         Assert.Multiple(() => {
-            Assert.That(result1.AwayEarnedRuns, Is.EqualTo(1), "1 earned after PA1");
-            Assert.That(result1.AwayUnearnedRuns, Is.EqualTo(0), "0 unearned after PA1");
-            Assert.That(result1.AwayScore, Is.EqualTo(1), "1 run scored");
+            Assert.That(result1.StateAfter.AwayEarnedRuns, Is.EqualTo(1), "1 earned after PA1");
+            Assert.That(result1.StateAfter.AwayUnearnedRuns, Is.EqualTo(0), "0 unearned after PA1");
+            Assert.That(result1.StateAfter.AwayScore, Is.EqualTo(1), "1 run scored");
         });
 
         // PA 2: ROE, 1 unearned run (using result from PA1 as starting state)
         // Now that GameState constructor properly preserves earned/unearned runs, this works correctly
         var state2 = new GameState(
             balls: 0, strikes: 0,
-            inning: result1.Inning, half: result1.Half, outs: result1.Outs,
-            onFirst: result1.OnFirst, onSecond: result1.OnSecond, onThird: true,  // Set up runner
-            awayScore: result1.AwayScore, homeScore: result1.HomeScore,
-            awayBattingOrderIndex: result1.AwayBattingOrderIndex,
-            homeBattingOrderIndex: result1.HomeBattingOrderIndex,
-            offense: result1.Offense, defense: result1.Defense,
+            inning: result1.StateAfter.Inning, half: result1.StateAfter.Half, outs: result1.StateAfter.Outs,
+            onFirst: result1.StateAfter.OnFirst, onSecond: result1.StateAfter.OnSecond, onThird: true,  // Set up runner
+            awayScore: result1.StateAfter.AwayScore, homeScore: result1.StateAfter.HomeScore,
+            awayBattingOrderIndex: result1.StateAfter.AwayBattingOrderIndex,
+            homeBattingOrderIndex: result1.StateAfter.HomeBattingOrderIndex,
+            offense: result1.StateAfter.Offense, defense: result1.StateAfter.Defense,
             isFinal: false,
-            awayEarnedRuns: result1.AwayEarnedRuns,
-            awayUnearnedRuns: result1.AwayUnearnedRuns,
-            homeEarnedRuns: result1.HomeEarnedRuns,
-            homeUnearnedRuns: result1.HomeUnearnedRuns
+            awayEarnedRuns: result1.StateAfter.AwayEarnedRuns,
+            awayUnearnedRuns: result1.StateAfter.AwayUnearnedRuns,
+            homeEarnedRuns: result1.StateAfter.HomeEarnedRuns,
+            homeUnearnedRuns: result1.StateAfter.HomeUnearnedRuns
         );
 
         var resolution2 = new PaResolution(
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError,
+            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
             HadError: true
         );
         var result2 = _scorekeeper.ApplyPlateAppearance(state2, resolution2);
 
         Assert.Multiple(() => {
-            Assert.That(result2.AwayEarnedRuns, Is.EqualTo(1), "Still 1 earned after PA2");
-            Assert.That(result2.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned after PA2");
-            Assert.That(result2.AwayScore, Is.EqualTo(2), "Total 2 runs");
+            Assert.That(result2.StateAfter.AwayEarnedRuns, Is.EqualTo(1), "Still 1 earned after PA2");
+            Assert.That(result2.StateAfter.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned after PA2");
+            Assert.That(result2.StateAfter.AwayScore, Is.EqualTo(2), "Total 2 runs");
         });
     }
     /// <summary>
@@ -322,7 +322,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 2,  // Both runners score
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,
+            Type: PaType.Single,Tag: OutcomeTag.Single,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: false)  // Only R2 advanced on error
         );
@@ -332,9 +332,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.AwayScore, Is.EqualTo(4), "2 runs added");
-            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(2), "v1 policy: any error = all unearned");
-            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "No earned runs");
+            Assert.That(result.StateAfter.AwayScore, Is.EqualTo(4), "2 runs added");
+            Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(2), "v1 policy: any error = all unearned");
+            Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(0), "No earned runs");
         });
     }
 
@@ -359,7 +359,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 2,  // Both runners score on error
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError,
+            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: true)
         );
@@ -369,9 +369,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.AwayScore, Is.EqualTo(5), "2 runs added");
-            Assert.That(result.AwayUnearnedRuns, Is.EqualTo(2), "ROE = all unearned");
-            Assert.That(result.AwayEarnedRuns, Is.EqualTo(0), "No earned runs");
+            Assert.That(result.StateAfter.AwayScore, Is.EqualTo(5), "2 runs added");
+            Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(2), "ROE = all unearned");
+            Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(0), "No earned runs");
         });
     }
 
@@ -396,7 +396,7 @@ public class EarnedRunTests {
             OutsAdded: 1,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.InPlayOut,
+            Type: PaType.InPlayOut,Tag: OutcomeTag.InPlayOut,
             Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true),
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
@@ -407,9 +407,9 @@ public class EarnedRunTests {
 
         // Assert
         Assert.Multiple(() => {
-            Assert.That(result.HomeScore, Is.EqualTo(3), "Run scores");
-            Assert.That(result.HomeUnearnedRuns, Is.EqualTo(1), "Run is unearned (error-assisted)");
-            Assert.That(result.HomeEarnedRuns, Is.EqualTo(0), "No earned runs");
+            Assert.That(result.StateAfter.HomeScore, Is.EqualTo(3), "Run scores");
+            Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(1), "Run is unearned (error-assisted)");
+            Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(0), "No earned runs");
         });
     }
 }

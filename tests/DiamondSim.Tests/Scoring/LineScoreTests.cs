@@ -41,9 +41,11 @@ public class LineScoreTests {
             OutsAdded: 0,
             RunsScored: 2,
             NewBases: new BaseState(false, false, false),
-            Type: PaType.HomeRun
+            Type: PaType.HomeRun,
+            Tag: OutcomeTag.HR
         );
-        state = _scorekeeper.ApplyPlateAppearance(state, resolution1);
+        var result1 = _scorekeeper.ApplyPlateAppearance(state, resolution1);
+        state = result1.StateAfter;
 
         // 3 outs to end half
         for (int i = 0; i < 3; i++) {
@@ -51,9 +53,11 @@ public class LineScoreTests {
                 OutsAdded: 1,
                 RunsScored: 0,
                 NewBases: new BaseState(false, false, false),
-                Type: PaType.InPlayOut
+                Type: PaType.InPlayOut,
+                Tag: OutcomeTag.InPlayOut
             );
-            state = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+            var result = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+            state = result.StateAfter;
         }
 
         // Verify line score recorded 2 runs for away team in inning 1
@@ -93,9 +97,11 @@ public class LineScoreTests {
             OutsAdded: 0,
             RunsScored: 0,
             NewBases: new BaseState(true, true, true),
-            Type: PaType.BB
+            Type: PaType.BB,
+            Tag: OutcomeTag.BB
         );
-        state = _scorekeeper.ApplyPlateAppearance(state, loadBases);
+        var result = _scorekeeper.ApplyPlateAppearance(state, loadBases);
+        state = result.StateAfter;
 
         // 3rd out with bases loaded - using BasesAtThirdOut snapshot
         for (int i = 0; i < 3; i++) {
@@ -104,9 +110,11 @@ public class LineScoreTests {
                 RunsScored: 0,
                 NewBases: new BaseState(false, false, false), // Bases cleared after play
                 Type: PaType.InPlayOut,
+                Tag: OutcomeTag.InPlayOut,
                 BasesAtThirdOut: new BaseState(true, true, true) // Bases loaded at instant of 3rd out
             );
-            state = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+            var outResult = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+            state = outResult.StateAfter;
         }
 
         // Verify LOB = 3 for away team
@@ -138,6 +146,7 @@ public class LineScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(false, false, false),
             Type: PaType.InPlayOut,
+            Tag: OutcomeTag.InPlayOut,
             BasesAtThirdOut: new BaseState(true, true, true)
         );
 
@@ -146,7 +155,7 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(3));
-        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+        Assert.That(result.StateAfter.Half, Is.EqualTo(InningHalf.Bottom));
     }
 
     [Test]
@@ -166,6 +175,7 @@ public class LineScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(false, false, false),
             Type: PaType.InPlayOut,
+            Tag: OutcomeTag.DP,
             Flags: new PaFlags(IsDoublePlay: true, IsSacFly: false),
             BasesAtThirdOut: new BaseState(false, false, true)
         );
@@ -175,8 +185,8 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.HomeLOB[0], Is.EqualTo(1));
-        Assert.That(result.Half, Is.EqualTo(InningHalf.Top));
-        Assert.That(result.Inning, Is.EqualTo(4));
+        Assert.That(result.StateAfter.Half, Is.EqualTo(InningHalf.Top));
+        Assert.That(result.StateAfter.Inning, Is.EqualTo(4));
     }
 
     [Test]
@@ -196,6 +206,7 @@ public class LineScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(true, true, false),
             Type: PaType.K,
+            Tag: OutcomeTag.K,
             BasesAtThirdOut: new BaseState(true, true, false)
         );
 
@@ -204,7 +215,7 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(2));
-        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+        Assert.That(result.StateAfter.Half, Is.EqualTo(InningHalf.Bottom));
     }
 
     [Test]
@@ -224,6 +235,7 @@ public class LineScoreTests {
             RunsScored: 1,  // R2 scores
             NewBases: new BaseState(false, false, false),
             Type: PaType.InPlayOut,
+            Tag: OutcomeTag.InPlayOut,
             BasesAtThirdOut: new BaseState(true, false, false)  // Only R1 at instant of third out
         );
 
@@ -232,7 +244,7 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(1));  // Only R1 stranded
-        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+        Assert.That(result.StateAfter.Half, Is.EqualTo(InningHalf.Bottom));
     }
 
     [Test]
@@ -252,6 +264,7 @@ public class LineScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(false, false, false),
             Type: PaType.InPlayOut,
+            Tag: OutcomeTag.InPlayOut,
             BasesAtThirdOut: new BaseState(false, false, false)
         );
 
@@ -260,7 +273,7 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(0));
-        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+        Assert.That(result.StateAfter.Half, Is.EqualTo(InningHalf.Bottom));
     }
 
     [Test]
@@ -280,6 +293,7 @@ public class LineScoreTests {
             RunsScored: 1,
             NewBases: new BaseState(true, true, false),
             Type: PaType.Single,
+            Tag: OutcomeTag.Single,
             BasesAtThirdOut: null  // No third out in walk-off
         );
 
@@ -288,8 +302,8 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.HomeLOB[0], Is.EqualTo(0));  // Walk-off: LOB always 0
-        Assert.That(result.IsFinal, Is.True);
-        Assert.That(result.HomeScore, Is.EqualTo(4));
+        Assert.That(result.StateAfter.IsFinal, Is.True);
+        Assert.That(result.StateAfter.HomeScore, Is.EqualTo(4));
     }
 
     [Test]
@@ -309,6 +323,7 @@ public class LineScoreTests {
             RunsScored: 4,
             NewBases: new BaseState(false, false, false),
             Type: PaType.HomeRun,
+            Tag: OutcomeTag.HR,
             BasesAtThirdOut: null  // No third out in walk-off
         );
 
@@ -317,8 +332,8 @@ public class LineScoreTests {
 
         // Assert
         Assert.That(_scorekeeper.HomeLOB[0], Is.EqualTo(0));  // Walk-off: LOB always 0
-        Assert.That(result.IsFinal, Is.True);
-        Assert.That(result.HomeScore, Is.EqualTo(7));
+        Assert.That(result.StateAfter.IsFinal, Is.True);
+        Assert.That(result.StateAfter.HomeScore, Is.EqualTo(7));
     }
 
     [Test]
@@ -338,6 +353,7 @@ public class LineScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(true, true, false),
             Type: PaType.K,
+            Tag: OutcomeTag.K,
             BasesAtThirdOut: null  // Producer hasn't been updated yet
         );
 
@@ -347,7 +363,7 @@ public class LineScoreTests {
         // Assert
         // Should fall back to NewBases for LOB computation
         Assert.That(_scorekeeper.AwayLOB[0], Is.EqualTo(2));
-        Assert.That(result.Half, Is.EqualTo(InningHalf.Bottom));
+        Assert.That(result.StateAfter.Half, Is.EqualTo(InningHalf.Bottom));
     }
 
     [Test]
@@ -384,9 +400,11 @@ public class LineScoreTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(true, false, false),
-            Type: PaType.Single
+            Type: PaType.Single,
+            Tag: OutcomeTag.Single
         );
-        state = _scorekeeper.ApplyPlateAppearance(state, walkoffHit);
+        var result = _scorekeeper.ApplyPlateAppearance(state, walkoffHit);
+        state = result.StateAfter;
 
         // Verify game is final
         Assert.That(state.IsFinal, Is.True);
@@ -434,9 +452,11 @@ public class LineScoreTests {
             OutsAdded: 1,
             RunsScored: 0,
             NewBases: new BaseState(false, false, false),
-            Type: PaType.InPlayOut
+            Type: PaType.InPlayOut,
+            Tag: OutcomeTag.InPlayOut
         );
-        state = _scorekeeper.ApplyPlateAppearance(state, finalOut);
+        var result = _scorekeeper.ApplyPlateAppearance(state, finalOut);
+        state = result.StateAfter;
 
         // Verify game is final (bottom 9th skipped)
         Assert.That(state.IsFinal, Is.True);
@@ -470,9 +490,11 @@ public class LineScoreTests {
                 OutsAdded: 0,
                 RunsScored: runs,
                 NewBases: new BaseState(false, false, false),
-                Type: PaType.HomeRun
+                Type: PaType.HomeRun,
+                Tag: OutcomeTag.HR
             );
-            state = _scorekeeper.ApplyPlateAppearance(state, scoreResolution);
+            var result = _scorekeeper.ApplyPlateAppearance(state, scoreResolution);
+            state = result.StateAfter;
         }
 
         // Record outs to end half
@@ -481,9 +503,11 @@ public class LineScoreTests {
                 OutsAdded: 1,
                 RunsScored: 0,
                 NewBases: new BaseState(false, false, false),
-                Type: PaType.InPlayOut
+                Type: PaType.InPlayOut,
+                Tag: OutcomeTag.InPlayOut
             );
-            state = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+            var outResult = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+            state = outResult.StateAfter;
         }
 
         return state;

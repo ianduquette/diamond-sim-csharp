@@ -45,6 +45,11 @@ public enum AtBatTerminal {
     Walk,
 
     /// <summary>
+    /// At-bat ended with batter being hit by pitch.
+    /// </summary>
+    HitByPitch,
+
+    /// <summary>
     /// At-bat ended with the ball being put in play.
     /// </summary>
     BallInPlay
