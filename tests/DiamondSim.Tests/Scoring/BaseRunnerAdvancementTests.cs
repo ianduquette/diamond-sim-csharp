@@ -12,7 +12,7 @@ public class BaseRunnerAdvancementTests {
     [Test]
     public void DoublePlay_Should_Only_Happen_On_Grounders() {
         // Arrange
-        const int trials = 20_000;
+        const int trials = 25_000;
         const int seed = 99999;
         var rng = new SeededRandom(seed);
         var advancement = new BaseRunnerAdvancement();
@@ -77,12 +77,9 @@ public class BaseRunnerAdvancementTests {
         }
 
         // Assert: DPs should only occur on ground balls
-        Assert.That(dpOnGrounders, Is.GreaterThan(0),
-            "DPs should occur on ground balls");
-        Assert.That(dpOnFlyBalls, Is.EqualTo(0),
-            "DPs should NEVER occur on fly balls");
-        Assert.That(dpOnLineDrives, Is.EqualTo(0),
-            "DPs should NEVER occur on line drives");
+        Assert.That(dpOnGrounders, Is.GreaterThan(0), "DPs should occur on ground balls");
+        Assert.That(dpOnFlyBalls, Is.EqualTo(0), "DPs should NEVER occur on fly balls");
+        Assert.That(dpOnLineDrives, Is.EqualTo(0), "DPs should NEVER occur on line drives");
 
         TestContext.Out.WriteLine($"DPs on ground balls: {dpOnGrounders}/{trials} ({(double)dpOnGrounders / trials:P1})");
         TestContext.Out.WriteLine($"DPs on fly balls: {dpOnFlyBalls}/{trials} (should be 0)");

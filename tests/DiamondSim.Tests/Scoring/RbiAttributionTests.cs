@@ -387,4 +387,74 @@ public class RbiAttributionTests {
         var batterStats = _scorer.BoxScore.AwayBatters[8];
         Assert.That(batterStats.RBI, Is.EqualTo(0), "RBI should be 0 when no runs score");
     }
+
+    // --- ADD THESE TESTS near the end of RbiAttributionTests class ---
+
+    /// <summary>
+    /// Grounded-into-double-play (GIDP) with a run scoring should NOT credit an RBI to the batter.
+    /// MLB Rule 9.04 exception.
+    /// </summary>
+    [Test]
+    public void RBI_GIDP_RunScores_NoRBI() {
+        // Arrange: Bases loaded, <2 outs. Batter grounds into DP, runner from 3rd scores.
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 2, half: InningHalf.Top, outs: 0,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 4, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 2,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false), // 6-4-3 DP; R3 crosses
+            Type: PaType.InPlayOut,
+            Tag: OutcomeTag.InPlayOut,
+            Flags: new PaFlags(IsDoublePlay: true, IsSacFly: false)
+        );
+
+        // Act
+        var result = _scorer.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(1), "Run from third should score.");
+        var batterStats = _scorer.BoxScore.AwayBatters[4];
+        Assert.That(batterStats.RBI, Is.EqualTo(0), "No RBI on a GIDP even if a run scores.");
+    }
+
+    /// <summary>
+    /// Sacrifice fly: exactly one RBI for the batter.
+    /// </summary>
+    [Test]
+    public void RBI_SacFly_OneRbi() {
+        // Arrange: R3 <2 outs, sac fly scores R3.
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 1, half: InningHalf.Top, outs: 1,
+            onFirst: false, onSecond: false, onThird: true,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 2, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
+            Type: PaType.InPlayOut,
+            Tag: OutcomeTag.SF,
+            Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true)
+        );
+
+        // Act
+        var result = _scorer.ApplyPlateAppearance(state, resolution);
+
+        // Assert
+        Assert.That(result.StateAfter.AwayScore, Is.EqualTo(1));
+        var batterStats = _scorer.BoxScore.AwayBatters[2];
+        Assert.That(batterStats.RBI, Is.EqualTo(1));
+    }
+
 }

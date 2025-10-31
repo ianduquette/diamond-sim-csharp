@@ -940,7 +940,7 @@ public class InningScoreTests {
             OutsAdded: 3,  // Triple play
             RunsScored: 0,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false), // Bases cleared after play
-            Type: PaType.InPlayOut,Tag: OutcomeTag.InPlayOut,
+            Type: PaType.InPlayOut, Tag: OutcomeTag.InPlayOut,
             HadError: false,
             BasesAtThirdOut: new BaseState(OnFirst: true, OnSecond: true, OnThird: true) // Bases loaded at instant of 3rd out
         );
@@ -986,7 +986,7 @@ public class InningScoreTests {
             OutsAdded: 0,
             RunsScored: 2,  // Two-run HR, not enough to win
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun,Tag: OutcomeTag.HR,
+            Type: PaType.HomeRun, Tag: OutcomeTag.HR,
             HadError: false
         );
 
@@ -1035,7 +1035,7 @@ public class InningScoreTests {
             OutsAdded: 1,
             RunsScored: 0,
             NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: false),
-            Type: PaType.K,Tag: OutcomeTag.K,
+            Type: PaType.K, Tag: OutcomeTag.K,
             HadError: false
         );
 
@@ -1083,7 +1083,7 @@ public class InningScoreTests {
             OutsAdded: 1,
             RunsScored: 0,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: true),
-            Type: PaType.InPlayOut,Tag: OutcomeTag.InPlayOut,
+            Type: PaType.InPlayOut, Tag: OutcomeTag.InPlayOut,
             HadError: false
         );
 
@@ -1100,6 +1100,51 @@ public class InningScoreTests {
             Assert.That(snapshot.AwayScore, Is.EqualTo(3));
         });
     }
+
+    /// <summary>
+    /// LOB is computed at the instant of the third out, not after runners would have advanced.
+    /// Scenario: R2/R3, batter singles; R3 is thrown out at home for 3rd out.
+    /// LOB should count the runners on base at the moment of that out (R1 & R2) → 2.
+    /// </summary>
+    [Test]
+    public void Lob_ComputedAtInstantOfThirdOut() {
+        // Arrange: top 5th, 2 outs, R2/R3
+        var state = new GameState(
+            balls: 0, strikes: 0,
+            inning: 5, half: InningHalf.Top, outs: 2,
+            onFirst: false, onSecond: true, onThird: true,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        // Batter singles; runner from 3rd is thrown out at home = 3rd out.
+        // BasesAtThirdOut MUST reflect base occupancy at the instant the third out occurred.
+        var resolution = new PaResolution(
+            OutsAdded: 1, // 3rd out on play at home
+            RunsScored: 0,
+            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: false), // after play finishes
+            Type: PaType.Single, Tag: OutcomeTag.Single,
+            // At the instant of the 3rd out, batter has NOT yet reached 1B; R2 has reached 3B; R3 is being put out at home.
+            BasesAtThirdOut: new BaseState(OnFirst: false, OnSecond: false, OnThird: true), // or see note below
+            Moves: new[] {
+                new RunnerMove(3, 4, false, false), // R3 out at home
+                new RunnerMove(2, 3, false, false), // R2 advances to 3B
+                new RunnerMove(0, 1, false, false)  // batter will reach 1B after the out
+            }
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+
+        // Assert: half-inning ends (new half starts with outs reset)
+        Assert.That(result.StateAfter.Outs, Is.EqualTo(0));
+
+        // LOB should be 1 (only R2 at 3B at the instant of the third out)
+        Assert.That(_scorekeeper.AwayTotalLOB, Is.EqualTo(1));
+    }
+
+
 
     #region Helper Methods
 
@@ -1120,7 +1165,7 @@ public class InningScoreTests {
                 Type: PaType.HomeRun,
             Tag: OutcomeTag.HR);
             var tmpResult7 = _scorekeeper.ApplyPlateAppearance(state, scoreResolution);
-        state = tmpResult7.StateAfter;
+            state = tmpResult7.StateAfter;
         }
 
         // Record 3 outs to end half-inning
@@ -1132,7 +1177,7 @@ public class InningScoreTests {
                 Type: PaType.InPlayOut,
             Tag: OutcomeTag.InPlayOut);
             var tmpResult8 = _scorekeeper.ApplyPlateAppearance(state, outResolution);
-        state = tmpResult8.StateAfter;
+            state = tmpResult8.StateAfter;
         }
 
         return state;

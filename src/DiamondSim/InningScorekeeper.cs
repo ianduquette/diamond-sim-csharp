@@ -129,6 +129,11 @@ public class InningScorekeeper {
             return 1;
         }
 
+        // Rule 3b: GIDP exception — no RBI on a double play even if a run scores (Rule 9.04 exception)
+        if (resolution.Flags?.IsDoublePlay == true) {
+            return 0;
+        }
+
         // Rule 4: Clean BIP - credit clamped runs scored
         // Note: clampedRuns already accounts for walk-off clamping
         return clampedRuns;

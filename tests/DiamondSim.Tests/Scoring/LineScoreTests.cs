@@ -481,6 +481,65 @@ public class LineScoreTests {
     }
 
     /// <summary>
+    /// Bottom 9th is skipped when home leads after top 9: line score shows 'X'
+    /// and both teams expose exactly 9 inning columns.
+    /// </summary>
+    [Test]
+    public void LineScore_SkippedBottom9_DisplaysX_AndHasNineColumns() {
+        // 1) Prefill through completed 8 full innings so column indices align 1..9
+        var s = PrefillThroughInning8Quietly();
+
+        // 2) Start top 9th with home already leading
+        s = new GameState(
+            balls: 0, strikes: 0,
+            inning: 9, half: InningHalf.Top, outs: 0,
+            onFirst: false, onSecond: false, onThird: false,
+            awayScore: 2, homeScore: 3,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        // 3) End the top 9th quietly (0 runs, 3 outs) via the test helper
+        var resultState = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+
+        // 4) Assertions: game ended, bottom 9 is X, and there are exactly 9 columns per side
+        Assert.That(resultState.IsFinal, Is.True, "Game should end since home already led after top 9.");
+        Assert.That(_scorekeeper.LineScore.HomeInnings.Count, Is.EqualTo(9), "Home should have 9 inning entries.");
+        Assert.That(_scorekeeper.LineScore.AwayInnings.Count, Is.EqualTo(9), "Away should have 9 inning entries.");
+        Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"), "Home 9th should display 'X'.");
+        // Also sanity: the away 9th was recorded (0 runs)
+        Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Away, 9), Is.EqualTo("0"));
+    }
+
+    /// <summary>
+    /// The public display API should always expose 9 columns (1..9) per team,
+    /// even if some innings have not been played yet (they render as '-').
+    /// </summary>
+    [Test]
+    public void LineScore_Display_HasExactlyNineColumns_ForEachTeam() {
+        // Start from a fresh scoreboard: only top 1st is completed quietly
+        var s = new GameState(
+            balls: 0, strikes: 0,
+            inning: 1, half: InningHalf.Top, outs: 0,
+            onFirst: false, onSecond: false, onThird: false,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+        _ = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+
+        // Ask for displays across 1..9 for both teams; should never throw and be short strings
+        for (int i = 1; i <= 9; i++) {
+            var away = _scorekeeper.LineScore.GetInningDisplay(Team.Away, i);
+            var home = _scorekeeper.LineScore.GetInningDisplay(Team.Home, i);
+            Assert.That(away, Is.Not.Null);
+            Assert.That(home, Is.Not.Null);
+            Assert.That(away.Length, Is.LessThanOrEqualTo(2));
+            Assert.That(home.Length, Is.LessThanOrEqualTo(2));
+        }
+    }
+
+    /// <summary>
     /// Helper method to score runs and end a half-inning.
     /// </summary>
     private GameState ScoreRunsAndEndHalf(GameState state, int runs, int outs) {
@@ -512,4 +571,84 @@ public class LineScoreTests {
 
         return state;
     }
+
+    /// <summary>
+    /// Builds a clean scoreboard with innings 1..8 fully played quietly (0 runs each side),
+    /// so line score indices are aligned before we assert on the 9th.
+    /// </summary>
+    private GameState PrefillThroughInning8Quietly() {
+        // Begin at a neutral "pre-game" state; we’ll position each half explicitly
+        var s = new GameState(
+            balls: 0, strikes: 0,
+            inning: 1, half: InningHalf.Top, outs: 0,
+            onFirst: false, onSecond: false, onThird: false,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home
+        );
+
+        for (int inning = 1; inning <= 8; inning++) {
+            // Top half (away bats) → quiet half
+            s = new GameState(0, 0, inning, InningHalf.Top, 0, false, false, false,
+                              s.AwayScore, s.HomeScore, 0, 0, Team.Away, Team.Home);
+            s = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+
+            // Bottom half (home bats) → quiet half
+            s = new GameState(0, 0, inning, InningHalf.Bottom, 0, false, false, false,
+                              s.AwayScore, s.HomeScore, 0, 0, Team.Home, Team.Away);
+            s = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+        }
+
+        return s;
+    }
+
+    /// <summary>
+    /// Sum of per-inning runs equals the team’s scoreboard runs (away & home).
+    /// </summary>
+    [Test]
+    public void Totals_LineScore_AndScoreboard_Agree() {
+        // Arrange: build a simple 3-inning script with known runs
+        var s = new GameState(0, 0, inning: 1, half: InningHalf.Top, outs: 0,
+                              onFirst: false, onSecond: false, onThird: false,
+                              awayScore: 0, homeScore: 0,
+                              awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+                              offense: Team.Away, defense: Team.Home);
+
+        // T1: away 2 runs, then end half
+        s = ScoreRunsAndEndHalf(s, runs: 2, outs: 3);
+        // B1: home 0
+        s = new GameState(0, 0, 1, InningHalf.Bottom, 0, false, false, false, s.AwayScore, s.HomeScore, 0, 0, Team.Home, Team.Away);
+        s = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+
+        // T2: away 1
+        s = new GameState(0, 0, 2, InningHalf.Top, 0, false, false, false, s.AwayScore, s.HomeScore, 0, 0, Team.Away, Team.Home);
+        s = ScoreRunsAndEndHalf(s, runs: 1, outs: 3);
+        // B2: home 3
+        s = new GameState(0, 0, 2, InningHalf.Bottom, 0, false, false, false, s.AwayScore, s.HomeScore, 0, 0, Team.Home, Team.Away);
+        s = ScoreRunsAndEndHalf(s, runs: 3, outs: 3);
+
+        // T3/B3: zeros (just to have another frame)
+        s = new GameState(0, 0, 3, InningHalf.Top, 0, false, false, false, s.AwayScore, s.HomeScore, 0, 0, Team.Away, Team.Home);
+        s = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+        s = new GameState(0, 0, 3, InningHalf.Bottom, 0, false, false, false, s.AwayScore, s.HomeScore, 0, 0, Team.Home, Team.Away);
+        s = ScoreRunsAndEndHalf(s, runs: 0, outs: 3);
+
+        // Act: sum line score by team
+        int SumInnings(Team t) {
+            var total = 0;
+            for (int i = 1; i <= 9; i++) {
+                var r = _scorekeeper.LineScore.GetInningRuns(t, i);
+                if (r > -1) total += r; // -1 means 'X' (skipped)
+            }
+            return total;
+        }
+
+        var lineAway = SumInnings(Team.Away);
+        var lineHome = SumInnings(Team.Home);
+
+        // Assert
+        Assert.That(lineAway, Is.EqualTo(s.AwayScore), "Away line score sum should match scoreboard runs.");
+        Assert.That(lineHome, Is.EqualTo(s.HomeScore), "Home line score sum should match scoreboard runs.");
+    }
+
 }

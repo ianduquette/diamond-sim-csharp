@@ -8,7 +8,7 @@
 ## Game Loop & CLI
 - [x] Single-game loop + CLI runner (seeded; deterministic)
 - [x] Basic postgame summary (with loop): final score, line score, LOB, batting box (core), team pitching line (R/ER/UER), scoring summary
-- [ ] Important: Implement .docs\TEST_COVERAGE_REPORT.md
+- [x] Important: Implement .docs\TEST_COVERAGE_REPORT.md
 - [ ] Allow for more than 9 innings. No ties
 - [ ] CLI flags: --seed, --out <file>, --playbyplay none|scoring|full, --format text|json
 

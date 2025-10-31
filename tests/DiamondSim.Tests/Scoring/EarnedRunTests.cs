@@ -31,7 +31,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
+            Type: PaType.ReachOnError, Tag: OutcomeTag.ROE,
             HadError: true
         );
 
@@ -64,7 +64,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,Tag: OutcomeTag.Single,
+            Type: PaType.Single, Tag: OutcomeTag.Single,
             HadError: false
         );
 
@@ -97,7 +97,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,Tag: OutcomeTag.Single,
+            Type: PaType.Single, Tag: OutcomeTag.Single,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: false)
         );
@@ -129,7 +129,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,Tag: OutcomeTag.Single,
+            Type: PaType.Single, Tag: OutcomeTag.Single,
             HadError: true,
             AdvanceOnError: null  // Error didn't affect scoring runner
         );
@@ -161,7 +161,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 4,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun,Tag: OutcomeTag.HR,
+            Type: PaType.HomeRun, Tag: OutcomeTag.HR,
             HadError: false
         );
 
@@ -192,7 +192,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 3,
             NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
-            Type: PaType.Double,Tag: OutcomeTag.Double,
+            Type: PaType.Double, Tag: OutcomeTag.Double,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: true, OnSecond: false, OnThird: false)
         );
@@ -224,7 +224,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.HomeRun,Tag: OutcomeTag.HR,
+            Type: PaType.HomeRun, Tag: OutcomeTag.HR,
             HadError: false
         );
 
@@ -258,7 +258,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,Tag: OutcomeTag.Single,
+            Type: PaType.Single, Tag: OutcomeTag.Single,
             HadError: false
         );
         var result1 = _scorekeeper.ApplyPlateAppearance(state1, resolution1);
@@ -290,7 +290,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
+            Type: PaType.ReachOnError, Tag: OutcomeTag.ROE,
             HadError: true
         );
         var result2 = _scorekeeper.ApplyPlateAppearance(state2, resolution2);
@@ -322,7 +322,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 2,  // Both runners score
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.Single,Tag: OutcomeTag.Single,
+            Type: PaType.Single, Tag: OutcomeTag.Single,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: false)  // Only R2 advanced on error
         );
@@ -359,7 +359,7 @@ public class EarnedRunTests {
             OutsAdded: 0,
             RunsScored: 2,  // Both runners score on error
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
-            Type: PaType.ReachOnError,Tag: OutcomeTag.ROE,
+            Type: PaType.ReachOnError, Tag: OutcomeTag.ROE,
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: true, OnThird: true)
         );
@@ -396,7 +396,7 @@ public class EarnedRunTests {
             OutsAdded: 1,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: false, OnSecond: false, OnThird: false),
-            Type: PaType.InPlayOut,Tag: OutcomeTag.InPlayOut,
+            Type: PaType.InPlayOut, Tag: OutcomeTag.InPlayOut,
             Flags: new PaFlags(IsDoublePlay: false, IsSacFly: true),
             HadError: true,
             AdvanceOnError: new BaseState(OnFirst: false, OnSecond: false, OnThird: true)
@@ -412,4 +412,98 @@ public class EarnedRunTests {
             Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(0), "No earned runs");
         });
     }
+
+    /// <summary>
+    /// Sanity: across multiple seeds and thousands of PAs, no at-bat should hit the 50-pitch safety cap.
+    /// </summary>
+    [Test]
+    public void AtBats_DoNotHitMaxPitchBailout() {
+        var seeds = new[] { 101, 202, 303, 404 };
+        const int trialsPerSeed = 5000;
+        int maxHitCount = 0;
+
+        foreach (var seed in seeds) {
+            var rng = new SeededRandom(seed);
+            var sim = new AtBatSimulator(rng);
+            var pitcher = PitcherRatings.Average;
+            var batter = BatterRatings.Average;
+
+            for (int i = 0; i < trialsPerSeed; i++) {
+                var res = sim.SimulateAtBat(pitcher, batter);
+                if (res.PitchCount >= 50) maxHitCount++;
+            }
+        }
+
+        Assert.That(maxHitCount, Is.EqualTo(0), "No at-bat should hit the 50-pitch safety cap.");
+    }
+
+    /// <summary>
+    /// V1-light limitation: an error earlier in the inning does NOT make later clean runs unearned.
+    /// Only the current PA's error flags are considered.
+    /// </summary>
+    [Test]
+    public void Unearned_DoesNotCarryToLaterCleanPlay_V1Light() {
+        // Arrange: Start with an error that does NOT score
+        var s = new GameState(0, 0,
+            inning: 4, half: InningHalf.Top, outs: 0,
+            onFirst: false, onSecond: false, onThird: false,
+            awayScore: 0, homeScore: 0,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
+            offense: Team.Away, defense: Team.Home);
+
+        var roe = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 0,
+            NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
+            Type: PaType.ReachOnError, Tag: OutcomeTag.ROE,
+            HadError: true
+        );
+        s = _scorekeeper.ApplyPlateAppearance(s, roe).StateAfter;
+
+        // Next batter: clean double scores runner from first
+        var cleanDouble = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: false, OnSecond: true, OnThird: false),
+            Type: PaType.Double, Tag: OutcomeTag.Double,
+            HadError: false
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(s, cleanDouble);
+
+        // Assert: under v1-light, that run is EARNED because this PA has no error flags.
+        Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(1));
+        Assert.That(result.StateAfter.AwayUnearnedRuns, Is.EqualTo(0));
+    }
+
+    /// <summary>
+    /// Bases-loaded walk forces in a run; with no error involvement, this is an earned run in v1-light.
+    /// </summary>
+    [Test]
+    public void Earned_BasesLoadedWalk_RunIsEarned() {
+        // Arrange
+        var s = new GameState(0, 0,
+            inning: 5, half: InningHalf.Bottom, outs: 1,
+            onFirst: true, onSecond: true, onThird: true,
+            awayScore: 2, homeScore: 2,
+            awayBattingOrderIndex: 0, homeBattingOrderIndex: 5,
+            offense: Team.Home, defense: Team.Away);
+
+        var walk = new PaResolution(
+            OutsAdded: 0,
+            RunsScored: 1,
+            NewBases: new BaseState(OnFirst: true, OnSecond: true, OnThird: true), // batter to 1st, all forced
+            Type: PaType.BB, Tag: OutcomeTag.BB
+        );
+
+        // Act
+        var result = _scorekeeper.ApplyPlateAppearance(s, walk);
+
+        // Assert
+        Assert.That(result.StateAfter.HomeScore, Is.EqualTo(3));
+        Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(1));
+        Assert.That(result.StateAfter.HomeUnearnedRuns, Is.EqualTo(0));
+    }
+
 }
