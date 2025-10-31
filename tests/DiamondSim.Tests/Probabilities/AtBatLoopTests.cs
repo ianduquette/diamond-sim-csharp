@@ -338,6 +338,6 @@ public class AtBatLoopTests {
         double avgRate = totalRate / seeds.Length;
 
         // Start generous; tighten to 0.008–0.020 once you tune ratings
-        Assert.That(avgRate, Is.InRange(0.005, 0.025), $"Avg HBP rate was {avgRate:P2}");
+        Assert.That(avgRate, Is.InRange(0.008, 0.020), $"Avg HBP rate was {avgRate:P2}");
     }
 }

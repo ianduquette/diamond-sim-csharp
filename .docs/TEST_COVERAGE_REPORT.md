@@ -295,3 +295,5 @@ The test suite provides strong coverage of core functionality with identified ga
 - v1.0 (2025-10-29): Initial coverage analysis
 
 **Next Review:** After Phase 1 test implementation
+
+- Snapshot drift: fixed-seed GameReport LogHash checked in GameLoop/SnapshotTests.

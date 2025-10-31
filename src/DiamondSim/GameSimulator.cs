@@ -368,3 +368,5 @@ public class GameSimulator {
         return parts.Count > 0 ? string.Join(", ", parts) : "";
     }
 }
+
+// TODO EXTRAS: When extras are enabled, ensure no-tie rule after 9th (loop until winner).
