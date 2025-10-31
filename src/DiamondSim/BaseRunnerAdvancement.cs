@@ -22,6 +22,7 @@ public class BaseRunnerAdvancement {
     /// </summary>
     /// <param name="terminal">The terminal at-bat outcome (K, BB, or BallInPlay)</param>
     /// <param name="bipOutcome">The ball-in-play outcome if terminal==BallInPlay, otherwise null</param>
+    /// <param name="bipType">The type of batted ball (GroundBall, FlyBall, LineDrive) if terminal==BallInPlay, otherwise null</param>
     /// <param name="currentBases">Current base occupancy before the play</param>
     /// <param name="currentOuts">Current outs before the play (0-2)</param>
     /// <param name="rng">Random source for probabilistic decisions (ROE, DP)</param>
@@ -29,6 +30,7 @@ public class BaseRunnerAdvancement {
     public PaResolution Resolve(
         AtBatTerminal terminal,
         BipOutcome? bipOutcome,
+        BipType? bipType,
         BaseState currentBases,
         int currentOuts,
         IRandomSource rng) {
@@ -37,7 +39,7 @@ public class BaseRunnerAdvancement {
             AtBatTerminal.Strikeout => ResolveStrikeout(currentBases, currentOuts),
             AtBatTerminal.Walk => ResolveWalk(currentBases, currentOuts),
             AtBatTerminal.HitByPitch => ResolveHitByPitch(currentBases, currentOuts),
-            AtBatTerminal.BallInPlay => ResolveBallInPlay(bipOutcome!.Value, currentBases, currentOuts, rng),
+            AtBatTerminal.BallInPlay => ResolveBallInPlay(bipOutcome!.Value, bipType!.Value, currentBases, currentOuts, rng),
             _ => throw new ArgumentException($"Unknown terminal outcome: {terminal}")
         };
     }
@@ -147,12 +149,13 @@ public class BaseRunnerAdvancement {
 
     private PaResolution ResolveBallInPlay(
         BipOutcome bipOutcome,
+        BipType bipType,
         BaseState currentBases,
         int currentOuts,
         IRandomSource rng) {
 
         return bipOutcome switch {
-            BipOutcome.Out => ResolveOut(currentBases, currentOuts, rng),
+            BipOutcome.Out => ResolveOut(bipType, currentBases, currentOuts, rng),
             BipOutcome.Single => ResolveSingle(currentBases, currentOuts),
             BipOutcome.Double => ResolveDouble(currentBases, currentOuts),
             BipOutcome.Triple => ResolveTriple(currentBases, currentOuts),
@@ -161,7 +164,7 @@ public class BaseRunnerAdvancement {
         };
     }
 
-    private PaResolution ResolveOut(BaseState currentBases, int currentOuts, IRandomSource rng) {
+    private PaResolution ResolveOut(BipType bipType, BaseState currentBases, int currentOuts, IRandomSource rng) {
         // Check for ROE (5% of outs become errors)
         bool isRoe = rng.NextDouble() < RoeRate;
         if (isRoe) {
@@ -169,7 +172,8 @@ public class BaseRunnerAdvancement {
         }
 
         // Check for double play (15% of groundouts with runner on first, less than 2 outs)
-        bool canDp = currentBases.OnFirst && currentOuts < 2;
+        // IMPORTANT: DP can only occur on ground balls, not fly balls or line drives
+        bool canDp = bipType == BipType.GroundBall && currentBases.OnFirst && currentOuts < 2;
         bool isDp = canDp && rng.NextDouble() < DpRate;
 
         if (isDp) {

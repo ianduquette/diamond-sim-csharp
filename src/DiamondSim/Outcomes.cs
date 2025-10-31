@@ -86,6 +86,27 @@ public enum BipOutcome {
 }
 
 /// <summary>
+/// Represents the type of batted ball when a ball is put in play.
+/// Used to determine appropriate runner advancement logic (e.g., double plays only on ground balls).
+/// </summary>
+public enum BipType {
+    /// <summary>
+    /// Ball hit on the ground.
+    /// </summary>
+    GroundBall,
+
+    /// <summary>
+    /// Ball hit in the air (fly ball).
+    /// </summary>
+    FlyBall,
+
+    /// <summary>
+    /// Ball hit sharply in the air (line drive).
+    /// </summary>
+    LineDrive
+}
+
+/// <summary>
 /// Represents which half of an inning is being played.
 /// </summary>
 public enum InningHalf {

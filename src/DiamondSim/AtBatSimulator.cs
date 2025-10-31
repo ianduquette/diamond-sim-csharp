@@ -91,7 +91,16 @@ public class AtBatSimulator {
     private const double FoulRateOtherCounts = 0.43; // 43% fouls in other counts - tuned for target BIP%
 
     // Hit By Pitch Rate (rare event)
-    private const double HitByPitchRate = 0.01; // 1% chance per pitch - realistic MLB rate (~1% of PA)
+    // Target HBP per plate appearance (tune as needed)
+    private const double HitByPitchPerPA = 0.011; // 1.1% per PA - realistic MLB rate
+
+    // Average pitches per PA in this sim; 3.6–4.0 is typical MLB. Measure & tune.
+    private const double AvgPitchesPerPA = 3.8;
+
+    // Derived per-pitch hazard so that on average we hit the per-PA target.
+    // Uses exponential decay formula: 1 - (1 - targetRate)^(1/avgPitches)
+    private static readonly double HitByPitchPerPitch =
+        1.0 - Math.Pow(1.0 - HitByPitchPerPA, 1.0 / AvgPitchesPerPA);
 
     // Safety limit to prevent infinite loops
     private const int MaxPitchesPerAtBat = 50;
@@ -119,8 +128,8 @@ public class AtBatSimulator {
         while (!state.IsTerminal() && pitchCount < MaxPitchesPerAtBat) {
             pitchCount++;
 
-            // 1. Check for HBP (rare event, checked first)
-            if (_random.NextDouble() < HitByPitchRate) {
+            // 1. Check for HBP (rare event, checked each pitch with derived per-pitch rate)
+            if (_random.NextDouble() < HitByPitchPerPitch) {
                 return new AtBatResult(
                     AtBatTerminal.HitByPitch,
                     state.ToString(),

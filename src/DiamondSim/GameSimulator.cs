@@ -108,18 +108,24 @@ public class GameSimulator {
 
         // 3. Resolve ball-in-play if needed
         BipOutcome? bipOutcome = null;
+        BipType? bipType = null;
         if (atBatResult.Terminal == AtBatTerminal.BallInPlay) {
             bipOutcome = BallInPlayResolver.ResolveBallInPlay(
                 batter.Ratings.Power,
                 pitcher.Ratings.Stuff,
                 _rng
             );
+
+            // Determine BIP type for runner advancement logic
+            // Distribution: ~50% ground balls, ~40% fly balls, ~10% line drives
+            bipType = DetermineBipType();
         }
 
         // 4. Calculate PaResolution (pure math, no mutation)
         var resolution = _baseRunnerAdvancement.Resolve(
             atBatResult.Terminal,
             bipOutcome,
+            bipType,
             new BaseState(state.OnFirst, state.OnSecond, state.OnThird),
             state.Outs,
             _rng
@@ -258,6 +264,23 @@ public class GameSimulator {
             OutcomeTag.InPlayOut => FormatRegularOut(),
             _ => "Unknown outcome"
         };
+    }
+
+    /// <summary>
+    /// Determines the type of batted ball for runner advancement logic.
+    /// Distribution: ~50% ground balls, ~40% fly balls, ~10% line drives
+    /// </summary>
+    private BipType DetermineBipType() {
+        double roll = _rng.NextDouble();
+        if (roll < 0.5) {
+            return BipType.GroundBall;
+        }
+        else if (roll < 0.9) {
+            return BipType.FlyBall;
+        }
+        else {
+            return BipType.LineDrive;
+        }
     }
 
     /// <summary>

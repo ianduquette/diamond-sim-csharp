@@ -305,4 +305,39 @@ public class AtBatLoopTests {
 
         TestContext.Out.WriteLine($"Terminal: {result.Terminal}, Count: {result.FinalCount}, Pitches: {result.PitchCount}");
     }
+
+    /// <summary>
+    /// Tests that HBP rate is realistic (~1-2% per PA, not per pitch).
+    /// With the current bug (1% per pitch), HBP rate explodes to several percent per PA.
+    /// This test should FAIL initially, then PASS after the fix.
+    /// Uses multiple seeds to ensure statistical stability.
+    /// </summary>
+    [Test]
+    public void AtBatOutcomes_HitByPitch_RateIsRealisticPerPA_MultiSeed() {
+        const int trialsPerSeed = 20000;
+        int[] seeds = { 111, 222, 333, 444 };
+
+        double totalRate = 0;
+        foreach (var seed in seeds) {
+            var rng = new SeededRandom(seed);
+            var sim = new AtBatSimulator(rng);
+            var pitcher = PitcherRatings.Average;
+            var batter = BatterRatings.Average;
+
+            int hbp = 0;
+            for (int i = 0; i < trialsPerSeed; i++) {
+                var res = sim.SimulateAtBat(pitcher, batter);
+                if (res.Terminal == AtBatTerminal.HitByPitch) hbp++;
+            }
+
+            double rate = (double)hbp / trialsPerSeed;
+            totalRate += rate;
+            TestContext.Out.WriteLine($"Seed {seed}: HBP {hbp}/{trialsPerSeed} = {rate:P2}");
+        }
+
+        double avgRate = totalRate / seeds.Length;
+
+        // Start generous; tighten to 0.008–0.020 once you tune ratings
+        Assert.That(avgRate, Is.InRange(0.005, 0.025), $"Avg HBP rate was {avgRate:P2}");
+    }
 }

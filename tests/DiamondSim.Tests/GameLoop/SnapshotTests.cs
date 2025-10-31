@@ -96,12 +96,20 @@ public class SnapshotTests {
         // Assert - Verify line score structure
         var lines = report.Split('\n');
 
-        // Find line score section (should have header with inning numbers)
-        var lineScoreHeader = lines.FirstOrDefault(l => l.Contains("1") && l.Contains("2") && l.Contains("3"));
-        Assert.That(lineScoreHeader, Is.Not.Null);
+        // Find line score section (should have header with inning numbers and R H E)
+        // Look for a line that has the inning numbers AND the R H E columns
+        var lineScoreHeader = lines.FirstOrDefault(l =>
+            l.Contains("|") &&
+            l.Contains("1") &&
+            l.Contains("2") &&
+            l.Contains("3") &&
+            l.Contains("R") &&
+            l.Contains("H") &&
+            l.Contains("E"));
+        Assert.That(lineScoreHeader, Is.Not.Null, "Line score header not found");
 
         // Should have 9 inning columns
-        Assert.That(lineScoreHeader, Does.Contain("9"));
+        Assert.That(lineScoreHeader, Does.Contain("9"), "Line score should show inning 9");
 
         // Should have R H E columns
         Assert.That(lineScoreHeader, Does.Contain("R"));
