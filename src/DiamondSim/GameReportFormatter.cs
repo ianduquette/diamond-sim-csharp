@@ -88,7 +88,7 @@ public class GameReportFormatter {
         var sb = new StringBuilder();
         sb.AppendLine($"{_awayTeamName} @ {_homeTeamName} — Seed: {_seed}");
         sb.AppendLine(FormatTimestamp(_timestamp));
-        sb.AppendLine("DH: ON | Extras: OFF (tie allowed)");
+        sb.AppendLine("DH: ON");
         return sb.ToString().TrimEnd();
     }
 
@@ -169,13 +169,8 @@ public class GameReportFormatter {
         int awayLOB = _scorekeeper.AwayTotalLOB;
         int homeLOB = _scorekeeper.HomeTotalLOB;
 
-        // Final score line
-        if (awayR == homeR) {
-            sb.AppendLine($"Final: {_awayTeamName} {awayR} — {_homeTeamName} {homeR} (TIE)");
-        }
-        else {
-            sb.AppendLine($"Final: {_awayTeamName} {awayR} — {_homeTeamName} {homeR}");
-        }
+        // Final score line (ties should never occur with extras enabled)
+        sb.AppendLine($"Final: {_awayTeamName} {awayR} — {_homeTeamName} {homeR}");
 
         // Team stats
         sb.AppendLine($"{_awayTeamName}: {awayR} R, {awayH} H, {awayE} E, {awayLOB} LOB");
@@ -264,6 +259,24 @@ public class GameReportFormatter {
     private string FormatPitchingBoxScores() {
         var sb = new StringBuilder();
 
+        // CRITICAL: Cross-check data integrity - batting runs must equal opposing pitching runs
+        int homeBattingRuns = _lineScore.HomeTotal;
+        int awayBattingRuns = _lineScore.AwayTotal;
+        int homePitchingRuns = _boxScore.HomePitchers.Values.Sum(p => p.R);
+        int awayPitchingRuns = _boxScore.AwayPitchers.Values.Sum(p => p.R);
+
+        if (homeBattingRuns != awayPitchingRuns) {
+            throw new InvalidOperationException(
+                $"Data integrity error: Home batting runs ({homeBattingRuns}) != Away pitching runs ({awayPitchingRuns}). " +
+                "This indicates a bug in run tracking during the game simulation.");
+        }
+
+        if (awayBattingRuns != homePitchingRuns) {
+            throw new InvalidOperationException(
+                $"Data integrity error: Away batting runs ({awayBattingRuns}) != Home pitching runs ({homePitchingRuns}). " +
+                "This indicates a bug in run tracking during the game simulation.");
+        }
+
         // Fixed column widths for pitching box score
         const int NAME_WIDTH = 24;
         const int IP_WIDTH = 5;
@@ -306,7 +319,7 @@ public class GameReportFormatter {
     private string FormatInningsPitched(int outsRecorded) {
         int fullInnings = outsRecorded / 3;
         int partialOuts = outsRecorded % 3;
-        return $"{fullInnings}.{partialOuts}";
+        return $"{fullInnings}.{partialOuts:D1}";
     }
 
     private string FormatFooter() {

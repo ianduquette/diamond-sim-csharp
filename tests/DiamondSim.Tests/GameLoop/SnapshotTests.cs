@@ -34,7 +34,7 @@ public class SnapshotTests {
         Assert.That(report, Does.Contain(awayTeam));
 
         // Verify structure exists
-        Assert.That(report, Does.Contain("DH: ON | Extras: OFF"));
+        Assert.That(report, Does.Contain("DH: ON"));
         Assert.That(report, Does.Contain("Final:"));
         Assert.That(report, Does.Contain("LogHash:"));
 

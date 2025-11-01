@@ -1,0 +1,184 @@
+# Extra Innings & No‑Ties (PRP) — **TDD + PRD‑First**
+
+**ID:** 20251101_01_ExtraInnings_NoTies_TDD.prp
+**Owner:** DiamondSim
+**Status:** Ready for PRD + implementation (tests‑first)
+**Depends on:** Inning Scoring PRD (20251024_04), Game Loop PRD (latest)
+**Non‑Blocking:** Pitcher changes (future), runner‑on‑2nd‑in‑extras (explicitly out of scope)
+
+> Follow `.rules/style.md` and `.rules/testing.md` (Arrange‑Act‑Assert; helpers at end of test classes).
+> **Protocol**: 1) **Write PRD** from this PRP, 2) **Write exactly one failing test**, 3) minimal code to pass, 4) repeat. No batching.
+
+---
+
+## 1) Goal
+
+Remove ties and the 9‑inning hard stop. Support regulation + extra innings with correct walk‑offs. No ghost runner on second.
+
+---
+
+## 2) Mandatory PRD Creation (Before Any Code)
+
+**You MUST author a PRD artifact before implementation.** Create:
+
+- Path: `.prd/20251101_Extras_NoTies.md`
+- Title: “Extra Innings & No‑Ties — Product Requirements”
+- Include the following sections (copy from this PRP and expand where noted):
+  1. **Executive Summary** — one paragraph, non‑technical.
+  2. **User Stories & Acceptance Criteria** — list out AC 1..N exactly as in §6 below, with concrete examples.
+  3. **Rules of Play** — regulation, extras, walk‑off, finalization, inning numbering.
+  4. **Edge Cases** — runner advancement truncation on walk‑off; HR exception; error/WTB anomalies; determinism note.
+  5. **Data Model Impacts** — `GameState`, enums, printers/serialization columns grow dynamically.
+  6. **Out of Scope** — ghost runner, pitcher changes, suspended games, playoff variants.
+  7. **Telemetry & Logging** — end state (WalkOff vs CompletedInning), inning of completion.
+  8. **Risks & Mitigations** — double‑credit RBIs, fixed 9‑col assumptions, longer games changing baselines.
+  9. **Test Plan (TDD order)** — mirror §7 Test Queue verbatim.
+  10. **Rollback Plan** — feature flag (temporary), never re‑introduce ties.
+- The PRD must be committed first with message: `PRD: Extra Innings & No‑Ties`.
+- Implementation may not start until the PRD file exists on branch and passes review.
+
+---
+
+## 3) Scope
+
+### In‑scope
+- Unlimited innings (10, 11, ... N) until a winner exists.
+- Walk‑off handling in Bottom 9+ (game ends exactly when the winning run scores).
+- Finalization only when one team leads after a completed inning or via walk‑off.
+- Dynamic line‑score columns; box score/LOB reflect end‑of‑half snapshot.
+- Deterministic outcomes under existing seeded randomness.
+- Removal of any Tie outcome/state in code, tests, and docs.
+
+### Out‑of‑scope
+- Ghost runner in extras.
+- Pitcher substitutions / fatigue.
+- Suspended games, darkness, time limits, playoff variants.
+
+---
+
+## 4) Rules & Definitions
+
+- **Regulation:** Innings 1..9; Bottom 9 can walk‑off.
+- **Extras:** Inning >= 10; alternate halves until finalization or walk‑off.
+- **Walk‑Off:** In Bottom 9+ the game ends on the scoring event that gives Home an unassailable lead. Do not advance additional runners beyond what is required for the winning run (HR exception: all runners + batter score).
+- **Finalization:** Final when (a) walk‑off occurs, or (b) a completed inning ends with unequal scores.
+- **Safety Cap:** Optional conservative hard cap (e.g., 30 innings). If ever hit, throw a clear exception (never mark Tie).
+
+---
+
+## 5) Data Model & API Notes
+
+- `GameState`:
+  - `Inning:int` (1..N), `Half:Top|Bottom`
+  - `Score:{Away:int, Home:int}`
+  - `RunsByInning:{Away:List<int>, Home:List<int>}` (lists expand dynamically)
+  - `IsFinal:bool`, `Winner:Team?`, `FinalizationMethod: WalkOff|CompletedInning`
+- `CloseHalfInning()` finalizes the line‑score column and resets bases/outs.
+- `ApplyPlayResult()` must detect walk‑off when `Half==Bottom && Inning>=9` after run deltas and set final state immediately.
+
+---
+
+## 6) Acceptance Criteria (User‑Visible Behavior)
+
+1. **No Ties:** No terminal tie state anywhere.
+2. **Walk‑Off Bottom 9:** Home trails by 1 entering Bottom 9; a single scores only the winning run; instant final.
+3. **Extras Continue:** If tied after 9, Top 10 begins.
+4. **Walk‑Off in Extras:** Any Bottom inning >=10 that yields a home lead ends instantly.
+5. **Line Score Grows:** Columns expand to the inning reached (e.g., 12th shows 12 columns).
+6. **Deterministic:** Same seed → identical winner, score, line‑score.
+7. **Logging:** Log inning/half and method (WalkOff | CompletedInning) at game end.
+
+---
+
+## 7) Test Queue — **TDD: one at a time, fail first**
+
+Create fixture: `tests/DiamondSim.Tests/Scoring/GameLoop_ExtrasAndWalkOffs_Tests.cs`
+
+> Use public seams/helpers only. Stage base/out/runner states via test helpers if needed. Control determinism by seed or staging.
+
+### 7.1 RemovesTieOutcome_ComprehensiveSweep
+- **Arrange:** None.
+- **Act:** Reflection/scan for any `Tie` enum value or outcome; run a scenario that previously could end tied.
+- **Assert:** No `Tie` enum or terminal tie state.
+- **Expected initial failure:** Existing `Tie` paths/enums are found.
+- **Then implement:** Remove enums/paths; replace tie returns with continued play or explicit non‑final error.
+
+### 7.2 ProceedsToExtras_WhenTiedAfterNine
+- **Arrange:** Force tie after 9.
+- **Act/Assert:** Transition to `Inning==10`, `Half==Top`.
+- **Expected initial failure:** Loop stops at 9 or marks final.
+
+### 7.3 CompletesExtras_WhenAwayLeadsAfterBottom
+- **Arrange:** Tie after 9; Top10 Away +1; Bottom10 Home 0.
+- **Assert:** `IsFinal==true`, `Winner==Away`, `FinalizationMethod==CompletedInning`.
+
+### 7.4 WalkOff_BottomNine
+- **Arrange:** Home −1 entering Bottom 9; R2; single.
+- **Assert:** `IsFinal==true`, `Winner==Home`, `FinalizationMethod==WalkOff`; only +1 run credited; no extra advancement.
+
+### 7.5 WalkOff_BottomTwelve
+- **Arrange:** Tied into 12th; non‑HR scoring play for Home.
+- **Assert:** Instant final; line‑score shows 12 columns for both teams.
+
+### 7.6 WalkOff_HomeRun_CreditsAll
+- **Arrange:** Tied Bottom 10; HR.
+- **Assert:** All runners + batter score; final via WalkOff.
+
+### 7.7 LineScore_ExpandsBeyondNine
+- **Arrange:** Long game (e.g., 14 innings).
+- **Assert:** `RunsByInning[Away].Count == 14` and same for Home; totals match sums.
+
+### 7.8 Determinism_PreservedAcrossExtras
+- **Arrange:** Seed S; run full game and snapshot.
+- **Act:** Re‑run with same seed.
+- **Assert:** Exact match of winner, final score, line‑score.
+
+### 7.9 Guardrail_NoInfiniteGames
+- **Arrange:** Normal seeds.
+- **Assert:** Safety cap not triggered; no exceptions.
+
+> **Cadence rule:** After each test passes locally, run the full fixture, then commit: `TDD: <TestName>`.
+
+---
+
+## 8) Product Changes
+
+- **Enums/DTOs:** Remove `Tie`; add `FinalizationMethod: WalkOff|CompletedInning` if missing.
+- **Game Loop:** Continue until final; open Top 10 on tie after 9.
+- **Walk‑Off Trigger:** Bottom 9+ detection after applying run deltas.
+- **Line‑Score/Printers:** Dynamic columns; width‑safe formatting.
+- **Box Score:** End‑of‑half snapshot; walk‑off ends half when winning run touches home.
+
+---
+
+## 9) Migration & Back‑Compat
+
+- Remove strings/docs mentioning ties/9‑inning limit.
+- Update golden files that assumed exactly 9 columns.
+- Re‑baseline regressions pinned to 9 innings or to ties.
+
+---
+
+## 10) Risks
+
+- Hidden 9‑column assumptions in printers/serialization.
+- Double‑crediting RBIs on non‑HR walk‑offs.
+- Historical seeds that now extend beyond 9 innings.
+
+---
+
+## 11) Rollback
+
+- Temporary feature flag if needed (default ON). Rollback should **not** re‑introduce ties; at most, re‑enforce 9‑inning limit for stabilization and then remove flag.
+
+---
+
+## 12) Required Deliverables & Order
+
+1. **PRD committed first:** `.prd/20251101_Extras_NoTies.md` (see §2).
+2. **Test fixture added:** `GameLoop_ExtrasAndWalkOffs_Tests.cs` with Test 7.1 only (fails).
+3. Implement minimum code to pass 7.1; commit.
+4. Repeat 7.2 → 7.9, one test at a time.
+5. Update printers/serialization as tests demand.
+6. Final changelog: “No ties; extra innings; walk‑offs implemented.”
+
