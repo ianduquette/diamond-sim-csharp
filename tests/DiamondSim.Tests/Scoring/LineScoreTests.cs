@@ -651,4 +651,36 @@ public class LineScoreTests {
         Assert.That(lineHome, Is.EqualTo(s.HomeScore), "Home line score sum should match scoreboard runs.");
     }
 
+    /// <summary>
+    /// Unit test: Line score must track all innings including extras.
+    /// The sum of all inning runs must equal the team's total runs.
+    /// </summary>
+    [Test]
+    public void LineScore_TracksAllInnings_IncludingExtras() {
+        // Arrange: Create a line score with runs in extra innings
+        var lineScore = new DiamondSim.LineScore();
+
+        // Regular 9 innings
+        for (int i = 1; i <= 9; i++) {
+            lineScore.RecordInning(DiamondSim.Team.Away, 0);
+            lineScore.RecordInning(DiamondSim.Team.Home, 0);
+        }
+
+        // Extra innings with runs
+        lineScore.RecordInning(DiamondSim.Team.Away, 1); // Inning 10
+        lineScore.RecordInning(DiamondSim.Team.Home, 0);
+        lineScore.RecordInning(DiamondSim.Team.Away, 0); // Inning 11
+        lineScore.RecordInning(DiamondSim.Team.Home, 2); // Walk-off in 11th
+
+        // Act: Sum all innings
+        int awaySum = lineScore.AwayInnings.Where(r => r >= 0).Sum();
+        int homeSum = lineScore.HomeInnings.Where(r => r >= 0).Sum();
+
+        // Assert: Sums must match totals
+        Assert.That(awaySum, Is.EqualTo(lineScore.AwayTotal), "Away inning sum must equal AwayTotal");
+        Assert.That(homeSum, Is.EqualTo(lineScore.HomeTotal), "Home inning sum must equal HomeTotal");
+        Assert.That(awaySum, Is.EqualTo(1), "Away scored 1 run in extras");
+        Assert.That(homeSum, Is.EqualTo(2), "Home scored 2 runs in extras");
+    }
+
 }

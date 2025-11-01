@@ -106,19 +106,27 @@ public class GameReportFormatter {
         const int INNING_WIDTH = 3;  // Space + 2 digits
         const int RHE_WIDTH = 3;     // Space + 2 digits each
 
+        // Determine max innings to display (at least 9, or more if extras were played)
+        int maxInnings = Math.Max(9, Math.Max(_lineScore.AwayInnings.Count, _lineScore.HomeInnings.Count));
+
         // Header row
         sb.Append($"{"",TEAM_WIDTH}|");
-        for (int i = 1; i <= 9; i++) {
+        for (int i = 1; i <= maxInnings; i++) {
             sb.Append($"{i,INNING_WIDTH}");
         }
         sb.AppendLine($" |{" R",RHE_WIDTH}{" H",RHE_WIDTH}{" E",RHE_WIDTH}");
 
-        // Separator: 15 (team) + 1 (|) + 27 (innings) + 2 ( |) + 9 (R/H/E) = 54 chars
-        sb.AppendLine("---------------|--------------------------- |---------");
+        // Separator: 15 (team) + 1 (|) + (maxInnings * 3) (innings) + 2 ( |) + 9 (R/H/E)
+        int separatorLength = TEAM_WIDTH + 1 + (maxInnings * INNING_WIDTH) + 2 + (RHE_WIDTH * 3);
+        sb.Append(new string('-', TEAM_WIDTH));
+        sb.Append('|');
+        sb.Append(new string('-', maxInnings * INNING_WIDTH));
+        sb.Append(" |");
+        sb.AppendLine(new string('-', RHE_WIDTH * 3));
 
         // Away team row
         sb.Append($"{_awayTeamName,-TEAM_WIDTH}|");
-        for (int i = 1; i <= 9; i++) {
+        for (int i = 1; i <= maxInnings; i++) {
             string display = _lineScore.GetInningDisplay(Team.Away, i);
             sb.Append($"{display,INNING_WIDTH}");
         }
@@ -129,7 +137,7 @@ public class GameReportFormatter {
 
         // Home team row
         sb.Append($"{_homeTeamName,-TEAM_WIDTH}|");
-        for (int i = 1; i <= 9; i++) {
+        for (int i = 1; i <= maxInnings; i++) {
             string display = _lineScore.GetInningDisplay(Team.Home, i);
             sb.Append($"{display,INNING_WIDTH}");
         }
