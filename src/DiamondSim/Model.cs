@@ -20,7 +20,3 @@ public sealed record PitcherRatings(
 
 public sealed record Batter(string Name, BatterRatings Ratings);
 public sealed record Pitcher(string Name, PitcherRatings Ratings);
-
-public sealed record AtBatOutcomes(int Trials, int Contacts) {
-    public double ContactRate => Trials == 0 ? 0.0 : (double)Contacts / Trials;
-}

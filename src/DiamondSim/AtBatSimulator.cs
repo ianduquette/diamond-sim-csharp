@@ -106,13 +106,16 @@ public class AtBatSimulator {
     private const int MaxPitchesPerAtBat = 50;
 
     private readonly IRandomSource _random;
+    private readonly IContactResolver _contactResolver;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AtBatSimulator"/> class.
     /// </summary>
     /// <param name="random">The random number generator to use for probabilistic decisions.</param>
-    public AtBatSimulator(IRandomSource random) {
+    /// <param name="contactResolver">The contact resolver to use for determining contact outcomes. If null, uses default ContactResolver.</param>
+    public AtBatSimulator(IRandomSource random, IContactResolver? contactResolver = null) {
         _random = random;
+        _contactResolver = contactResolver ?? new ContactResolver(random);
     }
 
     /// <summary>
@@ -236,12 +239,8 @@ public class AtBatSimulator {
             return inZone ? PitchOutcome.CalledStrike : PitchOutcome.Ball;
         }
 
-        // Batter swings - check for contact
-        double baseContact = Probabilities.ContactFromRatings(batter, pitcher);
-        double countAdjust = Probabilities.CountContactAdjust(balls, strikes);
-        double contactProb = Clamp01(baseContact + countAdjust);
-
-        bool makesContact = _random.NextDouble() < contactProb;
+        // Batter swings - check for contact using injected resolver
+        bool makesContact = _contactResolver.MakesContact(batter, pitcher, balls, strikes);
 
         if (!makesContact) {
             return PitchOutcome.SwingAndMiss;

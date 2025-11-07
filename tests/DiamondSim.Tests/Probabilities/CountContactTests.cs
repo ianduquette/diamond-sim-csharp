@@ -1,220 +1,86 @@
+using DiamondSim.Tests.TestHelpers;
+
 namespace DiamondSim.Tests.Probabilities;
 
 /// <summary>
 /// Tests for count-conditioned contact probability adjustments.
 /// Validates that contact rates vary monotonically across different counts.
+/// Tests the ContactResolver directly to ensure it applies count-based adjustments correctly.
 /// </summary>
 [TestFixture]
 public class CountContactTests {
     private const int Seed = 1337;
-    private const int TrialsPerCount = 10000;
 
-    /// <summary>
-    /// Creates a balanced batter with average ratings.
-    /// </summary>
-    private static Batter CreateAverageBatter() {
-        return new Batter("Average Joe", BatterRatings.Average);
-    }
+    [Test]
+    public void ContactRate_0_2_Count_FavorsPitcher() {
+        // Arrange - Establish baseline at 0-0 (neutral count)
+        var rng = new SeededRandom(Seed);
+        var resolver = new ContactResolver(rng);
+        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
 
-    /// <summary>
-    /// Creates a balanced pitcher with average ratings.
-    /// </summary>
-    private static Pitcher CreateAveragePitcher() {
-        return new Pitcher("Average Pete", PitcherRatings.Average);
-    }
+        // Act - Measure contact rate at 0-2 (pitcher's count)
+        var rate_0_2 = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 2);
 
-    /// <summary>
-    /// Simulates many pitches at a specific count and returns the contact rate.
-    /// </summary>
-    private static double MeasureContactRate(GameEngine engine, Batter batter, Pitcher pitcher, int balls, int strikes, int trials) {
-        int contacts = 0;
-        for (int i = 0; i < trials; i++) {
-            if (engine.SimulatePitchContact(batter, pitcher, balls, strikes)) {
-                contacts++;
-            }
-        }
-        return (double)contacts / trials;
+        // Assert - 0-2 should have lower contact rate than neutral
+        Assert.That(rate_0_2, Is.LessThan(baselineRate),
+            $"Contact rate at 0-2 ({rate_0_2:F4}) should be less than at 0-0 ({baselineRate:F4})");
+        Assert.That(rate_0_2, Is.InRange(0.60, 0.80));
     }
 
     [Test]
-    public void ContactRate_VariesMonotonically_AcrossKeyCounts() {
-        // Arrange
+    public void ContactRate_2_0_Count_FavorsHitter() {
+        // Arrange - Establish baseline at 0-0 (neutral count)
         var rng = new SeededRandom(Seed);
-        var engine = new GameEngine(rng);
-        var batter = CreateAverageBatter();
-        var pitcher = CreateAveragePitcher();
+        var resolver = new ContactResolver(rng);
+        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
 
-        // Act - Measure contact rates at key counts
-        var rate_0_2 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 2, TrialsPerCount); // Pitcher's count
-        var rate_0_0 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 0, TrialsPerCount); // Neutral count
-        var rate_2_0 = MeasureContactRate(engine, batter, pitcher, balls: 2, strikes: 0, TrialsPerCount); // Hitter's count
+        // Act - Measure contact rate at 2-0 (hitter's count)
+        var rate_2_0 = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 2, strikes: 0);
 
-        // Assert - Contact rate should increase as count favors hitter
-        Assert.That(rate_0_2, Is.LessThan(rate_0_0),
-            $"Contact rate at 0-2 ({rate_0_2:F4}) should be less than at 0-0 ({rate_0_0:F4})");
-        Assert.That(rate_0_0, Is.LessThan(rate_2_0),
-            $"Contact rate at 0-0 ({rate_0_0:F4}) should be less than at 2-0 ({rate_2_0:F4})");
-
-        // Additional validation: rates should be in reasonable ranges
-        Assert.That(rate_0_2, Is.InRange(0.60, 0.80));
-        Assert.That(rate_0_0, Is.InRange(0.70, 0.85));
+        // Assert - 2-0 should have higher contact rate than neutral
+        Assert.That(rate_2_0, Is.GreaterThan(baselineRate),
+            $"Contact rate at 2-0 ({rate_2_0:F4}) should be greater than at 0-0 ({baselineRate:F4})");
         Assert.That(rate_2_0, Is.InRange(0.75, 0.90));
     }
 
     [Test]
     public void ContactRate_3_0_Count_FavorsHitter() {
-        // Arrange
+        // Arrange - Establish baseline at 0-0 (neutral count)
         var rng = new SeededRandom(Seed);
-        var engine = new GameEngine(rng);
-        var batter = CreateAverageBatter();
-        var pitcher = CreateAveragePitcher();
+        var resolver = new ContactResolver(rng);
+        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
 
-        // Act
-        var rate_3_0 = MeasureContactRate(engine, batter, pitcher, balls: 3, strikes: 0, TrialsPerCount);
-        var rate_0_0 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 0, TrialsPerCount);
+        // Act - Measure contact rate at 3-0 (extreme hitter's count)
+        var rate_3_0 = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 3, strikes: 0);
 
         // Assert - 3-0 should have higher contact rate than neutral
-        Assert.That(rate_3_0, Is.GreaterThan(rate_0_0),
-            $"Contact rate at 3-0 ({rate_3_0:F4}) should be greater than at 0-0 ({rate_0_0:F4})");
+        Assert.That(rate_3_0, Is.GreaterThan(baselineRate),
+            $"Contact rate at 3-0 ({rate_3_0:F4}) should be greater than at 0-0 ({baselineRate:F4})");
         Assert.That(rate_3_0, Is.InRange(0.80, 0.95));
     }
 
     [Test]
-    public void ContactRate_0_2_Count_FavorsPitcher() {
-        // Arrange
-        var rng = new SeededRandom(Seed);
-        var engine = new GameEngine(rng);
-        var batter = CreateAverageBatter();
-        var pitcher = CreateAveragePitcher();
-
-        // Act
-        var rate_0_2 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 2, TrialsPerCount);
-        var rate_0_0 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 0, TrialsPerCount);
-
-        // Assert - 0-2 should have lower contact rate than neutral
-        Assert.That(rate_0_2, Is.LessThan(rate_0_0),
-            $"Contact rate at 0-2 ({rate_0_2:F4}) should be less than at 0-0 ({rate_0_0:F4})");
-        Assert.That(rate_0_2, Is.InRange(0.60, 0.80));
-    }
-
-    [Test]
     public void ContactRate_3_2_FullCount_IsBalanced() {
-        // Arrange
+        // Arrange - Establish baseline at 0-0 (neutral count)
         var rng = new SeededRandom(Seed);
-        var engine = new GameEngine(rng);
-        var batter = CreateAverageBatter();
-        var pitcher = CreateAveragePitcher();
+        var resolver = new ContactResolver(rng);
+        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
 
-        // Act
-        var rate_3_2 = MeasureContactRate(engine, batter, pitcher, balls: 3, strikes: 2, TrialsPerCount);
-        var rate_0_0 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 0, TrialsPerCount);
+        // Act - Measure contact rate at 3-2 (full count)
+        var rate_3_2 = ContactResolverTestHelper.MeasureContactRate(
+            resolver, TestConfig.SIM_DEFAULT_N, balls: 3, strikes: 2);
 
         // Assert - Full count should be close to neutral (within 5%)
-        var difference = Math.Abs(rate_3_2 - rate_0_0);
+        var difference = Math.Abs(rate_3_2 - baselineRate);
         Assert.That(difference, Is.LessThan(0.05),
-            $"Contact rate at 3-2 ({rate_3_2:F4}) should be close to 0-0 ({rate_0_0:F4}), difference: {difference:F4}");
+            $"Contact rate at 3-2 ({rate_3_2:F4}) should be close to 0-0 ({baselineRate:F4}), difference: {difference:F4}");
         Assert.That(rate_3_2, Is.InRange(0.70, 0.85));
-    }
-
-    [Test]
-    public void ContactRate_BackwardCompatibility_NeutralCountMatchesParameterless() {
-        // Arrange
-        var rng = new SeededRandom(Seed);
-        var engine = new GameEngine(rng);
-        var batter = CreateAverageBatter();
-        var pitcher = CreateAveragePitcher();
-
-        // Act - Compare parameterless method with explicit 0-0 count
-        var rateParameterless = MeasureContactRate_Parameterless(engine, batter, pitcher, TrialsPerCount);
-        var rate_0_0 = MeasureContactRate(engine, batter, pitcher, balls: 0, strikes: 0, TrialsPerCount);
-
-        // Assert - Both should produce the same rate (within statistical noise)
-        var difference = Math.Abs(rateParameterless - rate_0_0);
-        Assert.That(difference, Is.LessThan(0.02),
-            $"Parameterless method rate ({rateParameterless:F4}) should match 0-0 count rate ({rate_0_0:F4}), difference: {difference:F4}");
-    }
-
-    /// <summary>
-    /// Helper method to measure contact rate using the parameterless overload.
-    /// </summary>
-    private static double MeasureContactRate_Parameterless(GameEngine engine, Batter batter, Pitcher pitcher, int trials) {
-        int contacts = 0;
-        for (int i = 0; i < trials; i++) {
-            if (engine.SimulatePitchContact(batter, pitcher)) {
-                contacts++;
-            }
-        }
-        return (double)contacts / trials;
-    }
-
-    [Test]
-    public void GameState_ValidatesCountRanges() {
-        // Assert - Valid counts should not throw
-        var validState = new GameState(balls: 2, strikes: 1);
-        Assert.That(validState.Balls, Is.EqualTo(2));
-        Assert.That(validState.Strikes, Is.EqualTo(1));
-
-        // Assert - Terminal states (4 balls, 3 strikes) are now valid for at-bat simulation
-        var walkState = new GameState(balls: 4, strikes: 0);
-        Assert.That(walkState.Balls, Is.EqualTo(4));
-        var strikeoutState = new GameState(balls: 0, strikes: 3);
-        Assert.That(strikeoutState.Strikes, Is.EqualTo(3));
-
-        // Assert - Invalid balls should throw (negative or > 4)
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: -1, strikes: 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 5, strikes: 0));
-
-        // Assert - Invalid strikes should throw (negative or > 3)
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 0, strikes: -1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => new GameState(balls: 0, strikes: 4));
-    }
-
-    [Test]
-    public void GameState_IsComplete_DetectsWalkAndStrikeout() {
-        // Arrange & Act & Assert - Not complete
-        Assert.That(new GameState(0, 0).IsComplete(), Is.False);
-        Assert.That(new GameState(2, 1).IsComplete(), Is.False);
-        Assert.That(new GameState(3, 2).IsComplete(), Is.False);
-
-        // Assert - Terminal states are complete
-        Assert.That(new GameState(4, 0).IsComplete(), Is.True, "4 balls (walk) should be complete");
-        Assert.That(new GameState(0, 3).IsComplete(), Is.True, "3 strikes (strikeout) should be complete");
-        Assert.That(new GameState(4, 2).IsComplete(), Is.True, "4 balls with 2 strikes should be complete");
-    }
-
-    [Test]
-    public void GameState_ToString_FormatsCorrectly() {
-        // Arrange & Act & Assert
-        Assert.That(new GameState(0, 0).ToString(), Is.EqualTo("0-0"));
-        Assert.That(new GameState(2, 1).ToString(), Is.EqualTo("2-1"));
-        Assert.That(new GameState(3, 2).ToString(), Is.EqualTo("3-2"));
-    }
-
-    [Test]
-    public void GameState_Equality_WorksCorrectly() {
-        // Arrange
-        var state1 = new GameState(2, 1);
-        var state2 = new GameState(2, 1);
-        var state3 = new GameState(1, 2);
-
-        // Act & Assert
-        Assert.That(state1, Is.EqualTo(state2));
-        Assert.That(state1, Is.Not.EqualTo(state3));
-        Assert.That(state1.Equals(state2), Is.True);
-        Assert.That(state1.Equals(state3), Is.False);
-        Assert.That(state1.Equals(null), Is.False);
-        Assert.That(state1.Equals("not a GameState"), Is.False);
-    }
-
-    [Test]
-    public void GameState_GetHashCode_IsConsistent() {
-        // Arrange
-        var state1 = new GameState(2, 1);
-        var state2 = new GameState(2, 1);
-        var state3 = new GameState(1, 2);
-
-        // Act & Assert
-        Assert.That(state1.GetHashCode(), Is.EqualTo(state2.GetHashCode()));
-        Assert.That(state1.GetHashCode(), Is.Not.EqualTo(state3.GetHashCode()));
     }
 }

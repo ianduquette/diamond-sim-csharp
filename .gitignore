@@ -45,3 +45,6 @@ SOURCE
 # Don’t ignore your intentional plan folders
 !.prp/
 !.prd/
+
+# Visual Studio
+.vs/

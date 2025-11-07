@@ -6,6 +6,7 @@ namespace DiamondSim.Tests.Probabilities;
 /// </summary>
 [TestFixture]
 public class AtBatLoopTests {
+
     /// <summary>
     /// Tests that average vs. average matchups produce realistic outcome distributions.
     /// Expected ranges based on typical MLB statistics:
