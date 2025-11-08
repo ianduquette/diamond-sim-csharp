@@ -13,15 +13,13 @@ public class CountContactTests {
 
     [Test]
     public void ContactRate_0_2_Count_FavorsPitcher() {
-        // Arrange - Establish baseline at 0-0 (neutral count)
-        var rng = new SeededRandom(Seed);
-        var resolver = new ContactResolver(rng);
-        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
+        // Arrange
+        var batter = TestFactory.CreateAverageBatter();
+        var pitcher = TestFactory.CreateAveragePitcher();
+        var baselineRate = ExecuteSut(batter, pitcher, balls: 0, strikes: 0);
 
-        // Act - Measure contact rate at 0-2 (pitcher's count)
-        var rate_0_2 = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 2);
+        // Act
+        var rate_0_2 = ExecuteSut(batter, pitcher, balls: 0, strikes: 2);
 
         // Assert - 0-2 should have lower contact rate than neutral
         Assert.That(rate_0_2, Is.LessThan(baselineRate),
@@ -31,15 +29,13 @@ public class CountContactTests {
 
     [Test]
     public void ContactRate_2_0_Count_FavorsHitter() {
-        // Arrange - Establish baseline at 0-0 (neutral count)
-        var rng = new SeededRandom(Seed);
-        var resolver = new ContactResolver(rng);
-        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
+        // Arrange
+        var batter = TestFactory.CreateAverageBatter();
+        var pitcher = TestFactory.CreateAveragePitcher();
+        var baselineRate = ExecuteSut(batter, pitcher, balls: 0, strikes: 0);
 
-        // Act - Measure contact rate at 2-0 (hitter's count)
-        var rate_2_0 = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 2, strikes: 0);
+        // Act
+        var rate_2_0 = ExecuteSut(batter, pitcher, balls: 2, strikes: 0);
 
         // Assert - 2-0 should have higher contact rate than neutral
         Assert.That(rate_2_0, Is.GreaterThan(baselineRate),
@@ -49,15 +45,13 @@ public class CountContactTests {
 
     [Test]
     public void ContactRate_3_0_Count_FavorsHitter() {
-        // Arrange - Establish baseline at 0-0 (neutral count)
-        var rng = new SeededRandom(Seed);
-        var resolver = new ContactResolver(rng);
-        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
+        // Arrange
+        var batter = TestFactory.CreateAverageBatter();
+        var pitcher = TestFactory.CreateAveragePitcher();
+        var baselineRate = ExecuteSut(batter, pitcher, balls: 0, strikes: 0);
 
-        // Act - Measure contact rate at 3-0 (extreme hitter's count)
-        var rate_3_0 = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 3, strikes: 0);
+        // Act
+        var rate_3_0 = ExecuteSut(batter, pitcher, balls: 3, strikes: 0);
 
         // Assert - 3-0 should have higher contact rate than neutral
         Assert.That(rate_3_0, Is.GreaterThan(baselineRate),
@@ -67,20 +61,29 @@ public class CountContactTests {
 
     [Test]
     public void ContactRate_3_2_FullCount_IsBalanced() {
-        // Arrange - Establish baseline at 0-0 (neutral count)
-        var rng = new SeededRandom(Seed);
-        var resolver = new ContactResolver(rng);
-        var baselineRate = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 0, strikes: 0);
+        // Arrange
+        var batter = TestFactory.CreateAverageBatter();
+        var pitcher = TestFactory.CreateAveragePitcher();
+        var baselineRate = ExecuteSut(batter, pitcher, balls: 0, strikes: 0);
 
-        // Act - Measure contact rate at 3-2 (full count)
-        var rate_3_2 = ContactResolverTestHelper.MeasureContactRate(
-            resolver, TestConfig.SIM_DEFAULT_N, balls: 3, strikes: 2);
+        // Act
+        var rate_3_2 = ExecuteSut(batter, pitcher, balls: 3, strikes: 2);
 
         // Assert - Full count should be close to neutral (within 5%)
         var difference = Math.Abs(rate_3_2 - baselineRate);
         Assert.That(difference, Is.LessThan(0.05),
             $"Contact rate at 3-2 ({rate_3_2:F4}) should be close to 0-0 ({baselineRate:F4}), difference: {difference:F4}");
         Assert.That(rate_3_2, Is.InRange(0.70, 0.85));
+    }
+
+    /// <summary>
+    /// Executes the System Under Test (SUT) - measures contact rate at a specific count.
+    /// </summary>
+    private static double ExecuteSut(Batter batter, Pitcher pitcher, int balls, int strikes) {
+        var rng = new SeededRandom(seed: Seed);
+        var resolver = new ContactResolver(rng);
+        var trials = TestConfig.SIM_DEFAULT_N;
+        var contacts = ContactResolverTestHelper.CountContacts(resolver, batter, pitcher, trials, balls, strikes);
+        return (double)contacts / trials;
     }
 }
