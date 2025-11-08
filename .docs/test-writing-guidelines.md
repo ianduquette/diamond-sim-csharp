@@ -114,11 +114,122 @@ var contacts = CountContacts(resolver, ...);         // ✅
 - Use these throughout the codebase (not just tests)
 - Examples: `BatterRatings.Average`, `BatterRatings.Elite`, `BatterRatings.Poor`
 
-### 8. **Test Organization**
+### 8. **Use Class-Level Constants for Common Values**
+- Define constants at the class level for values used across multiple tests
+- Use descriptive names that eliminate the need for comments
+- This makes tests more maintainable and eliminates magic numbers
+
+**WRONG:**
+```csharp
+[Test]
+public void HighPower_IncreasesHomeRuns() {
+    // Arrange
+    int stuff = 50;  // Average pitcher
+    var avgDistribution = ExecuteSut(power: 50, stuff);
+
+    // Act
+    var highDistribution = ExecuteSut(power: 80, stuff);
+}
+```
+
+**RIGHT:**
+```csharp
+[TestFixture]
+public class MyTests {
+    private const int AveragePower = 50;
+    private const int AverageStuff = 50;
+    private const int HighPower = 80;
+
+    [Test]
+    public void HighPower_IncreasesHomeRuns() {
+        // Arrange
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
+
+        // Act
+        var highDistribution = ExecuteSut(HighPower, AverageStuff);
+    }
+}
+```
+
+### 9. **Encapsulate Validation Logic in Helper Classes**
+- When test helper classes/structs have repeated validation patterns, move them to methods on the class
+- This follows OO principles and eliminates code duplication
+- Makes tests cleaner and more maintainable
+
+**WRONG:**
+```csharp
+[Test]
+public void Test1() {
+    var distribution = ExecuteSut(...);
+
+    // Assert
+    double totalPct = distribution.OutPct + distribution.SinglePct +
+                     distribution.DoublePct + distribution.TriplePct + distribution.HrPct;
+    Assert.That(totalPct, Is.EqualTo(1.0).Within(0.0001));
+
+    Assert.That(distribution.OutPct, Is.GreaterThanOrEqualTo(0.0));
+    Assert.That(distribution.SinglePct, Is.GreaterThanOrEqualTo(0.0));
+    // ... more assertions
+}
+```
+
+**RIGHT:**
+```csharp
+private class BipDistribution {
+    public double TotalPct => OutPct + SinglePct + DoublePct + TriplePct + HrPct;
+
+    public void AssertTotalPercentageIsOne() {
+        Assert.That(TotalPct, Is.EqualTo(1.0).Within(0.0001));
+    }
+
+    public void AssertAllPercentagesNonNegative() {
+        Assert.That(OutPct, Is.GreaterThanOrEqualTo(0.0));
+        Assert.That(SinglePct, Is.GreaterThanOrEqualTo(0.0));
+        // ... all validations
+    }
+}
+
+[Test]
+public void Test1() {
+    var distribution = ExecuteSut(...);
+
+    // Assert
+    distribution.AssertTotalPercentageIsOne();
+    distribution.AssertAllPercentagesNonNegative();
+}
+```
+
+### 10. **Comment Style for Multiple Assertions**
+- Use only ONE `// Assert` comment per test
+- Additional assertions should have descriptive comments without the `// Assert` prefix
+- This keeps the Arrange-Act-Assert structure clear
+
+**WRONG:**
+```csharp
+// Assert - Verify total is 100%
+Assert.That(total, Is.EqualTo(1.0));
+
+// Assert - HR% should be 3-5%
+Assert.That(hrPct, Is.InRange(0.03, 0.05));
+```
+
+**RIGHT:**
+```csharp
+// Assert
+distribution.AssertTotalPercentageIsOne();
+
+Assert.That(hrPct, Is.InRange(0.03, 0.05));
+
+Assert.That(doublePct, Is.InRange(0.05, 0.07));
+```
+
+### 11. **Test Organization**
 ```csharp
 [TestFixture]
 public class MyTests {
     private const int Seed = 1337;
+    private const int AveragePower = 50;
+    private const int HighPower = 80;
     // Other constants here
 
     [Test]
@@ -141,6 +252,13 @@ public class MyTests {
     private static ReturnType ExecuteSut(params) {
         // Implementation
     }
+
+    /// <summary>
+    /// Helper class with encapsulated validation logic.
+    /// </summary>
+    private class HelperClass {
+        // Properties and validation methods
+    }
 }
 ```
 
@@ -153,6 +271,9 @@ public class MyTests {
 - [ ] Using `var` for local variables
 - [ ] Test names clearly describe what's being tested
 - [ ] Asserting against known values (not comparing two measurements unless testing relationships)
+- [ ] Using class-level constants instead of magic numbers or inline comments
+- [ ] Validation logic encapsulated in helper class methods (not repeated in tests)
+- [ ] Only ONE `// Assert` comment per test
 
 ## Remember
 

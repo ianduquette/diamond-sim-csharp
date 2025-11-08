@@ -1,305 +1,332 @@
+using DiamondSim.Tests.TestHelpers;
+
 namespace DiamondSim.Tests.Probabilities;
 
 /// <summary>
 /// Tests for ball-in-play outcome resolution and distribution validation.
+/// Validates that BallInPlayResolver produces realistic MLB-like distributions.
 /// </summary>
 [TestFixture]
 public class BallInPlayTests {
-    private const int TrialCount = 10_000;
     private const int Seed = 12345;
+    private const int AveragePower = 50;
+    private const int AverageStuff = 50;
+    private const int HighPower = 80;
+    private const int HighStuff = 80;
+    private const int LowPower = 20;
+    private const int LowStuff = 20;
 
     /// <summary>
     /// Validates that average vs. average matchup produces realistic distributions.
-    /// Expected ranges based on typical MLB statistics:
-    /// - HR%: 3-5% of all BIP
-    /// - 2B%: 5-7% of all BIP (16-22% of hits)
-    /// - 3B%: 0.3-0.5% of all BIP (~14 triples per season)
-    /// - Singles%: 18-21% of all BIP (60-70% of hits)
-    /// - Outs%: ~70-71% of all BIP
-    /// - BABIP: 0.26-0.32 (0.29 ± 0.03)
+    /// Expected ranges based on typical MLB statistics (see TestConfig for band definitions).
     /// </summary>
     [Test]
-    public void BipOutcomes_AverageVsAverage_ProducesRealisticDistributions() {
-        // Arrange
-        var random = new SeededRandom(Seed);
-        int power = 50;  // Average
-        int stuff = 50;  // Average
+    public void AverageVsAverage_ProducesRealisticDistributions() {
+        // Act
+        var distribution = ExecuteSut(AveragePower, AverageStuff);
 
-        int outs = 0, singles = 0, doubles = 0, triples = 0, homeRuns = 0;
+        // Assert
+        distribution.AssertTotalPercentageIsOne();
+        distribution.AssertAllPercentagesNonNegative();
 
-        // Act - Simulate 10,000 balls in play
-        for (int i = 0; i < TrialCount; i++) {
-            var outcome = BallInPlayResolver.ResolveBallInPlay(power, stuff, random);
-            switch (outcome) {
-                case BipOutcome.Out: outs++; break;
-                case BipOutcome.Single: singles++; break;
-                case BipOutcome.Double: doubles++; break;
-                case BipOutcome.Triple: triples++; break;
-                case BipOutcome.HomeRun: homeRuns++; break;
-            }
-        }
+        Assert.That(distribution.HrPct, Is.InRange(TestConfig.MlbBipHrMin, TestConfig.MlbBipHrMax),
+          $"HR% should be {TestConfig.MlbBipHrMin:P1}-{TestConfig.MlbBipHrMax:P1}, got {distribution.HrPct:P2}");
 
-        // Calculate percentages
-        double hrPct = (double)homeRuns / TrialCount;
-        double doublePct = (double)doubles / TrialCount;
-        double triplePct = (double)triples / TrialCount;
-        double singlePct = (double)singles / TrialCount;
-        double outPct = (double)outs / TrialCount;
+        Assert.That(distribution.DoublePct, Is.InRange(TestConfig.MlbBipDoubleMin, TestConfig.MlbBipDoubleMax),
+           $"2B% should be {TestConfig.MlbBipDoubleMin:P1}-{TestConfig.MlbBipDoubleMax:P1} of BIP, got {distribution.DoublePct:P2}");
 
-        // Calculate BABIP: (Singles + Doubles + Triples) / (BIP - HomeRuns)
-        double babip = (double)(singles + doubles + triples) / (TrialCount - homeRuns);
+        Assert.That(distribution.TriplePct, Is.InRange(TestConfig.MlbBipTripleMin, TestConfig.MlbBipTripleMax),
+            $"3B% should be {TestConfig.MlbBipTripleMin:P1}-{TestConfig.MlbBipTripleMax:P1} of BIP, got {distribution.TriplePct:P2}");
 
-        // Assert - Verify all percentages sum to 100%
-        double totalPct = hrPct + doublePct + triplePct + singlePct + outPct;
-        Assert.That(totalPct, Is.EqualTo(1.0).Within(0.0001),
-            "All percentages should sum to 100%");
+        Assert.That(distribution.SinglePct, Is.InRange(TestConfig.MlbBipSingleMin, TestConfig.MlbBipSingleMax),
+            $"Singles% should be {TestConfig.MlbBipSingleMin:P1}-{TestConfig.MlbBipSingleMax:P1} of BIP, got {distribution.SinglePct:P2}");
 
-        // Assert - HR% should be 3-5%
-        Assert.That(hrPct, Is.InRange(0.03, 0.05),
-            $"HR% should be 3-5%, got {hrPct:P2}");
-
-        // Assert - 2B% should be 5-7% of BIP
-        Assert.That(doublePct, Is.InRange(0.05, 0.07),
-            $"2B% should be 5-7% of BIP, got {doublePct:P2}");
-
-        // Assert - 3B% should be 0.3-0.5% of BIP (~14 triples per season)
-        Assert.That(triplePct, Is.InRange(0.003, 0.005),
-            $"3B% should be 0.3-0.5% of BIP, got {triplePct:P2}");
-
-        // Assert - Singles% should be 18-21% of BIP
-        Assert.That(singlePct, Is.InRange(0.18, 0.21),
-            $"Singles% should be 18-21% of BIP, got {singlePct:P2}");
-
-        // Assert - BABIP should be 0.26-0.32
-        Assert.That(babip, Is.InRange(0.26, 0.32),
-            $"BABIP should be 0.26-0.32, got {babip:F3}");
+        Assert.That(distribution.Babip, Is.InRange(TestConfig.MlbBabipMin, TestConfig.MlbBabipMax),
+            $"BABIP should be {TestConfig.MlbBabipMin:F2}-{TestConfig.MlbBabipMax:F2}, got {distribution.Babip:F3}");
 
         // Output for debugging
-        TestContext.Out.WriteLine($"Distribution for Average vs. Average (Power={power}, Stuff={stuff}):");
-        TestContext.Out.WriteLine($"  Outs:     {outs,5} ({outPct:P2})");
-        TestContext.Out.WriteLine($"  Singles:  {singles,5} ({singlePct:P2})");
-        TestContext.Out.WriteLine($"  Doubles:  {doubles,5} ({doublePct:P2})");
-        TestContext.Out.WriteLine($"  Triples:  {triples,5} ({triplePct:P2})");
-        TestContext.Out.WriteLine($"  HomeRuns: {homeRuns,5} ({hrPct:P2})");
-        TestContext.Out.WriteLine($"  BABIP:    {babip:F3}");
+        TestContext.Out.WriteLine($"Distribution for Average vs. Average (Power={AveragePower}, Stuff={AverageStuff}):");
+        TestContext.Out.WriteLine($"  Outs:     {distribution.Outs,5} ({distribution.OutPct:P2})");
+        TestContext.Out.WriteLine($"  Singles:  {distribution.Singles,5} ({distribution.SinglePct:P2})");
+        TestContext.Out.WriteLine($"  Doubles:  {distribution.Doubles,5} ({distribution.DoublePct:P2})");
+        TestContext.Out.WriteLine($"  Triples:  {distribution.Triples,5} ({distribution.TriplePct:P2})");
+        TestContext.Out.WriteLine($"  HomeRuns: {distribution.HomeRuns,5} ({distribution.HrPct:P2})");
+        TestContext.Out.WriteLine($"  BABIP:    {distribution.Babip:F3}");
     }
 
     /// <summary>
-    /// Validates that high Power increases extra-base hits (HR and 2B).
+    /// Validates that high Power increases home runs compared to average.
     /// </summary>
     [Test]
-    public void BipOutcomes_HighPower_IncreasesExtraBaseHits() {
+    public void HighPower_IncreasesHomeRuns() {
         // Arrange
-        var random = new SeededRandom(Seed);
-        int stuff = 50;  // Average pitcher
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
 
-        // Simulate with average Power
-        var avgResults = SimulateBallsInPlay(power: 50, stuff, random, TrialCount);
+        // Act
+        var highDistribution = ExecuteSut(HighPower, AverageStuff);
 
-        // Reset random for fair comparison
-        random = new SeededRandom(Seed);
-
-        // Simulate with high Power
-        var highResults = SimulateBallsInPlay(power: 80, stuff, random, TrialCount);
-
-        // Assert - High Power should produce more home runs
-        Assert.That(highResults.HrPct, Is.GreaterThan(avgResults.HrPct),
-            $"High Power should increase HR% (avg: {avgResults.HrPct:P2}, high: {highResults.HrPct:P2})");
-
-        // Assert - High Power should produce more doubles
-        Assert.That(highResults.DoublePct, Is.GreaterThan(avgResults.DoublePct),
-            $"High Power should increase 2B% (avg: {avgResults.DoublePct:P2}, high: {highResults.DoublePct:P2})");
-
-        // Assert - High Power should produce fewer outs
-        Assert.That(highResults.OutPct, Is.LessThan(avgResults.OutPct),
-            $"High Power should decrease Outs% (avg: {avgResults.OutPct:P2}, high: {highResults.OutPct:P2})");
+        // Assert
+        Assert.That(highDistribution.HrPct, Is.GreaterThan(avgDistribution.HrPct),
+            $"High Power should increase HR% (avg: {avgDistribution.HrPct:P2}, high: {highDistribution.HrPct:P2})");
 
         // Output for debugging
-        TestContext.Out.WriteLine($"Average Power (50): HR={avgResults.HrPct:P2}, 2B={avgResults.DoublePct:P2}, Outs={avgResults.OutPct:P2}");
-        TestContext.Out.WriteLine($"High Power (80):    HR={highResults.HrPct:P2}, 2B={highResults.DoublePct:P2}, Outs={highResults.OutPct:P2}");
+        TestContext.Out.WriteLine($"Average Power (50): HR={avgDistribution.HrPct:P2}");
+        TestContext.Out.WriteLine($"High Power (80):    HR={highDistribution.HrPct:P2}");
     }
 
     /// <summary>
-    /// Validates that high Stuff increases outs and lowers BABIP.
+    /// Validates that high Power increases doubles compared to average.
     /// </summary>
     [Test]
-    public void BipOutcomes_HighStuff_IncreasesOuts() {
+    public void HighPower_IncreasesDoubles() {
         // Arrange
-        var random = new SeededRandom(Seed);
-        int power = 50;  // Average batter
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
 
-        // Simulate with average Stuff
-        var avgResults = SimulateBallsInPlay(power, stuff: 50, random, TrialCount);
+        // Act
+        var highDistribution = ExecuteSut(HighPower, AverageStuff);
 
-        // Reset random for fair comparison
-        random = new SeededRandom(Seed);
-
-        // Simulate with high Stuff
-        var highResults = SimulateBallsInPlay(power, stuff: 80, random, TrialCount);
-
-        // Assert - High Stuff should produce more outs
-        Assert.That(highResults.OutPct, Is.GreaterThan(avgResults.OutPct),
-            $"High Stuff should increase Outs% (avg: {avgResults.OutPct:P2}, high: {highResults.OutPct:P2})");
-
-        // Assert - High Stuff should produce lower BABIP
-        Assert.That(highResults.Babip, Is.LessThan(avgResults.Babip),
-            $"High Stuff should decrease BABIP (avg: {avgResults.Babip:F3}, high: {highResults.Babip:F3})");
+        // Assert
+        Assert.That(highDistribution.DoublePct, Is.GreaterThan(avgDistribution.DoublePct),
+            $"High Power should increase 2B% (avg: {avgDistribution.DoublePct:P2}, high: {highDistribution.DoublePct:P2})");
 
         // Output for debugging
-        TestContext.Out.WriteLine($"Average Stuff (50): Outs={avgResults.OutPct:P2}, BABIP={avgResults.Babip:F3}");
-        TestContext.Out.WriteLine($"High Stuff (80):    Outs={highResults.OutPct:P2}, BABIP={highResults.Babip:F3}");
+        TestContext.Out.WriteLine($"Average Power (50): 2B={avgDistribution.DoublePct:P2}");
+        TestContext.Out.WriteLine($"High Power (80):    2B={highDistribution.DoublePct:P2}");
     }
 
     /// <summary>
-    /// Validates that low Power favors contact hits (singles) over extra-base hits.
+    /// Validates that high Power decreases outs compared to average.
     /// </summary>
     [Test]
-    public void BipOutcomes_LowPower_FavorsContactHits() {
+    public void HighPower_DecreasesOuts() {
         // Arrange
-        var random = new SeededRandom(Seed);
-        int stuff = 50;  // Average pitcher
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
 
-        // Simulate with average Power
-        var avgResults = SimulateBallsInPlay(power: 50, stuff, random, TrialCount);
+        // Act
+        var highDistribution = ExecuteSut(HighPower, AverageStuff);
 
-        // Reset random for fair comparison
-        random = new SeededRandom(Seed);
+        // Assert
+        Assert.That(highDistribution.OutPct, Is.LessThan(avgDistribution.OutPct),
+            $"High Power should decrease Outs% (avg: {avgDistribution.OutPct:P2}, high: {highDistribution.OutPct:P2})");
 
-        // Simulate with low Power
-        var lowResults = SimulateBallsInPlay(power: 20, stuff, random, TrialCount);
+        // Output for debugging
+        TestContext.Out.WriteLine($"Average Power (50): Outs={avgDistribution.OutPct:P2}");
+        TestContext.Out.WriteLine($"High Power (80):    Outs={highDistribution.OutPct:P2}");
+    }
 
-        // Assert - Low Power should produce fewer home runs
-        Assert.That(lowResults.HrPct, Is.LessThan(avgResults.HrPct),
-            $"Low Power should decrease HR% (avg: {avgResults.HrPct:P2}, low: {lowResults.HrPct:P2})");
+    /// <summary>
+    /// Validates that high Stuff increases outs compared to average.
+    /// </summary>
+    [Test]
+    public void HighStuff_IncreasesOuts() {
+        // Arrange
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
 
-        // Assert - Low Power should produce more singles (as percentage of hits)
-        double avgSinglePctOfHits = avgResults.SinglePct / (1.0 - avgResults.OutPct);
-        double lowSinglePctOfHits = lowResults.SinglePct / (1.0 - lowResults.OutPct);
+        // Act
+        var highDistribution = ExecuteSut(AveragePower, HighStuff);
+
+        // Assert
+        Assert.That(highDistribution.OutPct, Is.GreaterThan(avgDistribution.OutPct),
+            $"High Stuff should increase Outs% (avg: {avgDistribution.OutPct:P2}, high: {highDistribution.OutPct:P2})");
+
+        // Output for debugging
+        TestContext.Out.WriteLine($"Average Stuff (50): Outs={avgDistribution.OutPct:P2}");
+        TestContext.Out.WriteLine($"High Stuff (80):    Outs={highDistribution.OutPct:P2}");
+    }
+
+    /// <summary>
+    /// Validates that high Stuff lowers BABIP compared to average.
+    /// </summary>
+    [Test]
+    public void HighStuff_LowersBabip() {
+        // Arrange
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
+
+        // Act
+        var highDistribution = ExecuteSut(AveragePower, HighStuff);
+
+        // Assert
+        Assert.That(highDistribution.Babip, Is.LessThan(avgDistribution.Babip),
+            $"High Stuff should decrease BABIP (avg: {avgDistribution.Babip:F3}, high: {highDistribution.Babip:F3})");
+
+        // Output for debugging
+        TestContext.Out.WriteLine($"Average Stuff (50): BABIP={avgDistribution.Babip:F3}");
+        TestContext.Out.WriteLine($"High Stuff (80):    BABIP={highDistribution.Babip:F3}");
+    }
+
+    /// <summary>
+    /// Validates that low Power decreases home runs compared to average.
+    /// </summary>
+    [Test]
+    public void LowPower_DecreasesHomeRuns() {
+        // Arrange
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
+
+        // Act
+        var lowDistribution = ExecuteSut(LowPower, AverageStuff);
+
+        // Assert
+        Assert.That(lowDistribution.HrPct, Is.LessThan(avgDistribution.HrPct),
+            $"Low Power should decrease HR% (avg: {avgDistribution.HrPct:P2}, low: {lowDistribution.HrPct:P2})");
+
+        // Output for debugging
+        TestContext.Out.WriteLine($"Average Power (50): HR={avgDistribution.HrPct:P2}");
+        TestContext.Out.WriteLine($"Low Power (20):     HR={lowDistribution.HrPct:P2}");
+    }
+
+    /// <summary>
+    /// Validates that low Power increases singles as a percentage of all hits (including HRs).
+    /// </summary>
+    [Test]
+    public void LowPower_IncreasesSinglesAsShareOfAllHits() {
+        // Arrange
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
+        double avgSinglePctOfHits = avgDistribution.SinglePct / (1.0 - avgDistribution.OutPct);
+
+        // Act
+        var lowDistribution = ExecuteSut(LowPower, AverageStuff);
+        double lowSinglePctOfHits = lowDistribution.SinglePct / (1.0 - lowDistribution.OutPct);
+
+        // Assert
         Assert.That(lowSinglePctOfHits, Is.GreaterThan(avgSinglePctOfHits),
-            $"Low Power should increase Singles% of hits (avg: {avgSinglePctOfHits:P2}, low: {lowSinglePctOfHits:P2})");
+            $"Low Power should increase Singles% of all hits (avg: {avgSinglePctOfHits:P2}, low: {lowSinglePctOfHits:P2})");
 
         // Output for debugging
-        TestContext.Out.WriteLine($"Average Power (50): HR={avgResults.HrPct:P2}, 1B%ofHits={avgSinglePctOfHits:P2}");
-        TestContext.Out.WriteLine($"Low Power (20):     HR={lowResults.HrPct:P2}, 1B%ofHits={lowSinglePctOfHits:P2}");
+        TestContext.Out.WriteLine($"Average Power (50): 1B%ofAllHits={avgSinglePctOfHits:P2}");
+        TestContext.Out.WriteLine($"Low Power (20):     1B%ofAllHits={lowSinglePctOfHits:P2}");
     }
 
     /// <summary>
-    /// Validates that low Stuff decreases outs and increases BABIP.
+    /// Validates that low Power increases singles as a percentage of contact hits (excluding HRs).
     /// </summary>
     [Test]
-    public void BipOutcomes_LowStuff_DecreasesOuts() {
+    public void LowPower_IncreasesSinglesAsShareOfContactHits() {
         // Arrange
-        var random = new SeededRandom(Seed);
-        int power = 50;  // Average batter
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
+        double avgSinglesOfContactHits = avgDistribution.SinglePct / (1.0 - avgDistribution.OutPct - avgDistribution.HrPct);
 
-        // Simulate with average Stuff
-        var avgResults = SimulateBallsInPlay(power, stuff: 50, random, TrialCount);
+        // Act
+        var lowDistribution = ExecuteSut(LowPower, AverageStuff);
+        double lowSinglesOfContactHits = lowDistribution.SinglePct / (1.0 - lowDistribution.OutPct - lowDistribution.HrPct);
 
-        // Reset random for fair comparison
-        random = new SeededRandom(Seed);
-
-        // Simulate with low Stuff
-        var lowResults = SimulateBallsInPlay(power, stuff: 20, random, TrialCount);
-
-        // Assert - Low Stuff should produce fewer outs
-        Assert.That(lowResults.OutPct, Is.LessThan(avgResults.OutPct),
-            $"Low Stuff should decrease Outs% (avg: {avgResults.OutPct:P2}, low: {lowResults.OutPct:P2})");
-
-        // Assert - Low Stuff should produce higher BABIP
-        Assert.That(lowResults.Babip, Is.GreaterThan(avgResults.Babip),
-            $"Low Stuff should increase BABIP (avg: {avgResults.Babip:F3}, low: {lowResults.Babip:F3})");
+        // Assert
+        Assert.That(lowSinglesOfContactHits, Is.GreaterThan(avgSinglesOfContactHits),
+            $"Low Power should increase Singles% of contact hits (avg: {avgSinglesOfContactHits:P2}, low: {lowSinglesOfContactHits:P2})");
 
         // Output for debugging
-        TestContext.Out.WriteLine($"Average Stuff (50): Outs={avgResults.OutPct:P2}, BABIP={avgResults.Babip:F3}");
-        TestContext.Out.WriteLine($"Low Stuff (20):     Outs={lowResults.OutPct:P2}, BABIP={lowResults.Babip:F3}");
+        TestContext.Out.WriteLine($"Average Power (50): 1B%ofContactHits={avgSinglesOfContactHits:P2}");
+        TestContext.Out.WriteLine($"Low Power (20):     1B%ofContactHits={lowSinglesOfContactHits:P2}");
     }
 
     /// <summary>
-    /// Validates that extreme attribute combinations produce valid distributions.
+    /// Validates that low Stuff decreases outs compared to average.
     /// </summary>
     [Test]
-    public void BipOutcomes_ExtremeAttributes_ProduceValidDistributions() {
+    public void LowStuff_DecreasesOuts() {
         // Arrange
-        var random = new SeededRandom(Seed);
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
 
-        // Test extreme combinations
-        var combinations = new[] {
-            (power: 0, stuff: 0, name: "Min Power, Min Stuff"),
-            (power: 100, stuff: 100, name: "Max Power, Max Stuff"),
-            (power: 0, stuff: 100, name: "Min Power, Max Stuff"),
-            (power: 100, stuff: 0, name: "Max Power, Min Stuff")
-        };
+        // Act
+        var lowDistribution = ExecuteSut(AveragePower, LowStuff);
 
-        foreach (var (power, stuff, name) in combinations) {
-            // Reset random for each test
-            random = new SeededRandom(Seed);
+        // Assert
+        Assert.That(lowDistribution.OutPct, Is.LessThan(avgDistribution.OutPct),
+            $"Low Stuff should decrease Outs% (avg: {avgDistribution.OutPct:P2}, low: {lowDistribution.OutPct:P2})");
 
-            var results = SimulateBallsInPlay(power, stuff, random, TrialCount);
-
-            // Assert - All percentages should sum to 1.0
-            double totalPct = results.OutPct + results.SinglePct + results.DoublePct +
-                            results.TriplePct + results.HrPct;
-            Assert.That(totalPct, Is.EqualTo(1.0).Within(0.0001),
-                $"{name}: All percentages should sum to 100%");
-
-            // Assert - All percentages should be non-negative
-            Assert.That(results.OutPct, Is.GreaterThanOrEqualTo(0.0),
-                $"{name}: Out% should be non-negative");
-            Assert.That(results.SinglePct, Is.GreaterThanOrEqualTo(0.0),
-                $"{name}: Single% should be non-negative");
-            Assert.That(results.DoublePct, Is.GreaterThanOrEqualTo(0.0),
-                $"{name}: Double% should be non-negative");
-            Assert.That(results.TriplePct, Is.GreaterThanOrEqualTo(0.0),
-                $"{name}: Triple% should be non-negative");
-            Assert.That(results.HrPct, Is.GreaterThanOrEqualTo(0.0),
-                $"{name}: HR% should be non-negative");
-
-            // Assert - BABIP should be in reasonable range (0.0-1.0)
-            Assert.That(results.Babip, Is.InRange(0.0, 1.0),
-                $"{name}: BABIP should be between 0.0 and 1.0");
-
-            // Output for debugging
-            TestContext.Out.WriteLine($"{name}: Outs={results.OutPct:P2}, BABIP={results.Babip:F3}, HR={results.HrPct:P2}");
-        }
+        // Output for debugging
+        TestContext.Out.WriteLine($"Average Stuff (50): Outs={avgDistribution.OutPct:P2}");
+        TestContext.Out.WriteLine($"Low Stuff (20):     Outs={lowDistribution.OutPct:P2}");
     }
 
     /// <summary>
-    /// Helper method to simulate multiple balls in play and return aggregated results.
+    /// Validates that low Stuff increases BABIP compared to average.
     /// </summary>
-    private BipDistribution SimulateBallsInPlay(int power, int stuff, IRandomSource random, int trials) {
-        int outs = 0, singles = 0, doubles = 0, triples = 0, homeRuns = 0;
+    [Test]
+    public void LowStuff_IncreasesBabip() {
+        // Arrange
+        var avgDistribution = ExecuteSut(AveragePower, AverageStuff);
+
+        // Act
+        var lowDistribution = ExecuteSut(AveragePower, LowStuff);
+
+        // Assert
+        Assert.That(lowDistribution.Babip, Is.GreaterThan(avgDistribution.Babip),
+            $"Low Stuff should increase BABIP (avg: {avgDistribution.Babip:F3}, low: {lowDistribution.Babip:F3})");
+
+        // Output for debugging
+        TestContext.Out.WriteLine($"Average Stuff (50): BABIP={avgDistribution.Babip:F3}");
+        TestContext.Out.WriteLine($"Low Stuff (20):     BABIP={lowDistribution.Babip:F3}");
+    }
+
+    /// <summary>
+    /// Validates that extreme parameter combinations (min/max Power and Stuff) produce valid distributions.
+    /// Tests boundary conditions to ensure the system handles edge cases correctly:
+    /// - All percentages sum to 100%
+    /// - No negative percentages
+    /// - BABIP remains in valid range [0.0, 1.0]
+    /// </summary>
+    [TestCase(0, 0, TestName = "MinPower_MinStuff")]
+    [TestCase(100, 100, TestName = "MaxPower_MaxStuff")]
+    [TestCase(0, 100, TestName = "MinPower_MaxStuff")]
+    [TestCase(100, 0, TestName = "MaxPower_MinStuff")]
+    public void ExtremeParams_ProduceValidDistributions(int power, int stuff) {
+        // Act
+        var distribution = ExecuteSut(power, stuff);
+
+        // Assert
+        distribution.AssertTotalPercentageIsOne();
+        distribution.AssertAllPercentagesNonNegative();
+
+        Assert.That(distribution.Babip, Is.InRange(0.0, 1.0),
+            $"BABIP should be in valid range [0.0, 1.0] for Power={power}, Stuff={stuff}");
+
+        // Output for debugging
+        TestContext.Out.WriteLine($"Power={power}, Stuff={stuff}: Outs={distribution.OutPct:P2}, BABIP={distribution.Babip:F3}, HR={distribution.HrPct:P2}");
+    }
+
+    /// <summary>
+    /// Executes the System Under Test (SUT) - simulates ball-in-play outcomes and returns distribution.
+    /// </summary>
+    private static BipDistribution ExecuteSut(int power, int stuff) {
+        var random = new SeededRandom(Seed);
+        var trials = TestConfig.SIM_DEFAULT_N;
+        var distribution = new BipDistribution(trials);
 
         for (int i = 0; i < trials; i++) {
             var outcome = BallInPlayResolver.ResolveBallInPlay(power, stuff, random);
-            switch (outcome) {
-                case BipOutcome.Out: outs++; break;
-                case BipOutcome.Single: singles++; break;
-                case BipOutcome.Double: doubles++; break;
-                case BipOutcome.Triple: triples++; break;
-                case BipOutcome.HomeRun: homeRuns++; break;
-            }
+            distribution.RecordOutcome(outcome);
         }
 
-        return new BipDistribution {
-            Outs = outs,
-            Singles = singles,
-            Doubles = doubles,
-            Triples = triples,
-            HomeRuns = homeRuns,
-            Trials = trials
-        };
+        return distribution;
     }
 
     /// <summary>
-    /// Helper structure to hold BIP distribution results.
+    /// Helper class to hold BIP distribution results.
     /// </summary>
-    private struct BipDistribution {
-        public int Outs;
-        public int Singles;
-        public int Doubles;
-        public int Triples;
-        public int HomeRuns;
-        public int Trials;
+    private class BipDistribution {
+        public int Outs { get; private set; }
+        public int Singles { get; private set; }
+        public int Doubles { get; private set; }
+        public int Triples { get; private set; }
+        public int HomeRuns { get; private set; }
+        private int Trials { get; }
+
+        public BipDistribution(int trials) {
+            Trials = trials;
+        }
+
+        /// <summary>
+        /// Records a ball-in-play outcome, updating internal counts.
+        /// </summary>
+        public void RecordOutcome(BipOutcome outcome) {
+            switch (outcome) {
+                case BipOutcome.Out: Outs++; break;
+                case BipOutcome.Single: Singles++; break;
+                case BipOutcome.Double: Doubles++; break;
+                case BipOutcome.Triple: Triples++; break;
+                case BipOutcome.HomeRun: HomeRuns++; break;
+            }
+        }
 
         public double OutPct => (double)Outs / Trials;
         public double SinglePct => (double)Singles / Trials;
@@ -308,8 +335,35 @@ public class BallInPlayTests {
         public double HrPct => (double)HomeRuns / Trials;
 
         /// <summary>
-        /// BABIP = (Singles + Doubles + Triples) / (BIP - HomeRuns)
+        /// Sum of all outcome percentages (should equal 1.0).
         /// </summary>
-        public double Babip => (double)(Singles + Doubles + Triples) / (Trials - HomeRuns);
+        public double TotalPct => OutPct + SinglePct + DoublePct + TriplePct + HrPct;
+
+        /// <summary>
+        /// BABIP = (Singles + Doubles + Triples) / (BIP - HomeRuns)
+        /// Returns 0.0 if all BIP are home runs (edge case safety guard).
+        /// </summary>
+        public double Babip => Trials == HomeRuns
+            ? 0.0
+            : (double)(Singles + Doubles + Triples) / (Trials - HomeRuns);
+
+        /// <summary>
+        /// Asserts that the total percentage equals 1.0 (100%).
+        /// </summary>
+        public void AssertTotalPercentageIsOne() {
+            Assert.That(TotalPct, Is.EqualTo(1.0).Within(0.0001),
+                "All percentages should sum to 100%");
+        }
+
+        /// <summary>
+        /// Asserts that all outcome percentages are non-negative.
+        /// </summary>
+        public void AssertAllPercentagesNonNegative() {
+            Assert.That(OutPct, Is.GreaterThanOrEqualTo(0.0), "Out% should be non-negative");
+            Assert.That(SinglePct, Is.GreaterThanOrEqualTo(0.0), "Single% should be non-negative");
+            Assert.That(DoublePct, Is.GreaterThanOrEqualTo(0.0), "Double% should be non-negative");
+            Assert.That(TriplePct, Is.GreaterThanOrEqualTo(0.0), "Triple% should be non-negative");
+            Assert.That(HrPct, Is.GreaterThanOrEqualTo(0.0), "HR% should be non-negative");
+        }
     }
 }
