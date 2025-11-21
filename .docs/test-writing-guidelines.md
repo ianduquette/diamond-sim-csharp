@@ -40,11 +40,13 @@ public void Count_0_2_LowerThanBaseline() {
 }
 ```
 
-### 2. **Use ExecuteSut Pattern**
-- Create a private helper method called `ExecuteSut` that encapsulates SUT execution
-- Place it at the **end of the test class**
+### 2. **Use ExecuteSut Pattern (When Appropriate)**
+- **Use ExecuteSut when:** Setup is complex (simulations, loops, multiple dependencies)
+- **Skip ExecuteSut when:** Setup is simple (e.g., `new BoxScore()`, single method call)
+- If used, place it at the **end of the test class**
 - Make it `static` if possible (no instance state needed)
 
+**Example - Complex setup (USE ExecuteSut):**
 ```csharp
 /// <summary>
 /// Executes the System Under Test (SUT) - measures contact rate.
@@ -55,6 +57,22 @@ private static double ExecuteSut(Batter batter, Pitcher pitcher) {
     var trials = TestConfig.SIM_DEFAULT_N;
     var contacts = ContactResolverTestHelper.CountContacts(resolver, batter, pitcher, trials);
     return (double)contacts / trials;
+}
+```
+
+**Example - Simple setup (SKIP ExecuteSut):**
+```csharp
+[Test]
+public void IncrementBatterStats_Single_IncrementsCorrectStats() {
+    // Arrange
+    var boxScore = new BoxScore();
+
+    // Act
+    boxScore.IncrementBatterStats(Team.Away, 0, PaType.Single, 0, 0, false);
+
+    // Assert
+    var stats = boxScore.AwayBatters[0];
+    Assert.That(stats.H, Is.EqualTo(1));
 }
 ```
 
