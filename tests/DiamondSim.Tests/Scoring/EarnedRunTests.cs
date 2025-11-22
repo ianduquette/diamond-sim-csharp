@@ -1,3 +1,5 @@
+using DiamondSim.Tests.TestHelpers;
+
 namespace DiamondSim.Tests.Scoring;
 
 /// <summary>
@@ -8,23 +10,18 @@ namespace DiamondSim.Tests.Scoring;
 [TestFixture]
 [Category("Scoring")]
 public class EarnedRunTests {
-    private InningScorekeeper _scorekeeper = null!;
-
-    [SetUp]
-    public void Setup() {
-        _scorekeeper = new InningScorekeeper();
-    }
 
     [Test]
     public void RoeScoresRunner_UnearnedRun() {
         // Arrange: Runner on 3rd, reach on error scores the run
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 4, half: InningHalf.Top, outs: 1,
-            onFirst: false, onSecond: false, onThird: true,
-            awayScore: 2, homeScore: 3,
-            awayBattingOrderIndex: 5, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 4,
+            outs: 1,
+            onThird: true,
+            awayScore: 2,
+            homeScore: 3,
+            awayBattingOrderIndex: 5
         );
 
         var resolution = new PaResolution(
@@ -36,7 +33,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -51,13 +48,15 @@ public class EarnedRunTests {
     [Test]
     public void CleanSingle_EarnedRun() {
         // Arrange: Runner on 3rd, clean single scores the run
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 6, half: InningHalf.Bottom, outs: 2,
-            onFirst: false, onSecond: false, onThird: true,
-            awayScore: 4, homeScore: 2,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 7,
-            offense: Team.Home, defense: Team.Away
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 6,
+            half: InningHalf.Bottom,
+            outs: 2,
+            onThird: true,
+            awayScore: 4,
+            homeScore: 2,
+            homeBattingOrderIndex: 7
         );
 
         var resolution = new PaResolution(
@@ -69,7 +68,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -84,13 +83,13 @@ public class EarnedRunTests {
     [Test]
     public void AdvanceOnError_UnearnedRun() {
         // Arrange: Runner on 2nd, single with error allows runner to score
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 3, half: InningHalf.Top, outs: 0,
-            onFirst: false, onSecond: true, onThird: false,
-            awayScore: 1, homeScore: 2,
-            awayBattingOrderIndex: 3, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 3,
+            onSecond: true,
+            awayScore: 1,
+            homeScore: 2,
+            awayBattingOrderIndex: 3
         );
 
         var resolution = new PaResolution(
@@ -103,7 +102,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -116,13 +115,15 @@ public class EarnedRunTests {
     [Test]
     public void ErrorButNoAdvance_EarnedRun() {
         // Arrange: Runner on 3rd, single scores runner cleanly despite error elsewhere
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 5, half: InningHalf.Bottom, outs: 1,
-            onFirst: false, onSecond: false, onThird: true,
-            awayScore: 3, homeScore: 2,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 4,
-            offense: Team.Home, defense: Team.Away
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 5,
+            half: InningHalf.Bottom,
+            outs: 1,
+            onThird: true,
+            awayScore: 3,
+            homeScore: 2,
+            homeBattingOrderIndex: 4
         );
 
         var resolution = new PaResolution(
@@ -135,7 +136,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -148,13 +149,16 @@ public class EarnedRunTests {
     [Test]
     public void HomeRun_AllEarned() {
         // Arrange: Bases loaded, grand slam
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 7, half: InningHalf.Top, outs: 2,
-            onFirst: true, onSecond: true, onThird: true,
-            awayScore: 2, homeScore: 5,
-            awayBattingOrderIndex: 8, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 7,
+            outs: 2,
+            onFirst: true,
+            onSecond: true,
+            onThird: true,
+            awayScore: 2,
+            homeScore: 5,
+            awayBattingOrderIndex: 8
         );
 
         var resolution = new PaResolution(
@@ -166,7 +170,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -179,13 +183,16 @@ public class EarnedRunTests {
     [Test]
     public void MultipleRunsWithError_AllUnearned() {
         // Arrange: Bases loaded, double with error allows all to score
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 8, half: InningHalf.Bottom, outs: 0,
-            onFirst: true, onSecond: true, onThird: true,
-            awayScore: 6, homeScore: 3,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 2,
-            offense: Team.Home, defense: Team.Away
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 8,
+            half: InningHalf.Bottom,
+            onFirst: true,
+            onSecond: true,
+            onThird: true,
+            awayScore: 6,
+            homeScore: 3,
+            homeBattingOrderIndex: 2
         );
 
         var resolution = new PaResolution(
@@ -198,7 +205,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -211,13 +218,14 @@ public class EarnedRunTests {
     [Test]
     public void WalkoffHomeRun_EarnedRuns() {
         // Arrange: Bottom 9th, tied, solo home run wins it
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 9, half: InningHalf.Bottom, outs: 2,
-            onFirst: false, onSecond: false, onThird: false,
-            awayScore: 2, homeScore: 2,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 6,
-            offense: Team.Home, defense: Team.Away
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 9,
+            half: InningHalf.Bottom,
+            outs: 2,
+            awayScore: 2,
+            homeScore: 2,
+            homeBattingOrderIndex: 6
         );
 
         var resolution = new PaResolution(
@@ -229,7 +237,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -242,65 +250,64 @@ public class EarnedRunTests {
 
     [Test]
     public void AccumulatedEarnedRuns_MultipleInnings() {
-        // Test that earned/unearned runs accumulate correctly across multiple PAs
+        // Arrange: Execute PA1 (clean single) to establish baseline state with 1 earned run
+        var scorekeeper = new InningScorekeeper();
 
-        // PA 1: Clean single, 1 earned run
-        var state1 = new GameState(
-            balls: 0, strikes: 0,
-            inning: 1, half: InningHalf.Top, outs: 0,
-            onFirst: false, onSecond: false, onThird: true,
-            awayScore: 0, homeScore: 0,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var initialState = GameStateTestHelper.CreateGameState(
+            onThird: true
         );
 
-        var resolution1 = new PaResolution(
+        var cleanSingleResolution = new PaResolution(
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
             Type: PaType.Single, Tag: OutcomeTag.Single,
             HadError: false
         );
-        var result1 = _scorekeeper.ApplyPlateAppearance(state1, resolution1);
 
-        Assert.Multiple(() => {
-            Assert.That(result1.StateAfter.AwayEarnedRuns, Is.EqualTo(1), "1 earned after PA1");
-            Assert.That(result1.StateAfter.AwayUnearnedRuns, Is.EqualTo(0), "0 unearned after PA1");
-            Assert.That(result1.StateAfter.AwayScore, Is.EqualTo(1), "1 run scored");
-        });
+        // Execute PA1 to set up baseline state
+        var result1 = scorekeeper.ApplyPlateAppearance(initialState, cleanSingleResolution);
+        var stateAfterPA1 = result1.StateAfter;
 
-        // PA 2: ROE, 1 unearned run (using result from PA1 as starting state)
-        // Now that GameState constructor properly preserves earned/unearned runs, this works correctly
-        var state2 = new GameState(
-            balls: 0, strikes: 0,
-            inning: result1.StateAfter.Inning, half: result1.StateAfter.Half, outs: result1.StateAfter.Outs,
-            onFirst: result1.StateAfter.OnFirst, onSecond: result1.StateAfter.OnSecond, onThird: true,  // Set up runner
-            awayScore: result1.StateAfter.AwayScore, homeScore: result1.StateAfter.HomeScore,
-            awayBattingOrderIndex: result1.StateAfter.AwayBattingOrderIndex,
-            homeBattingOrderIndex: result1.StateAfter.HomeBattingOrderIndex,
-            offense: result1.StateAfter.Offense, defense: result1.StateAfter.Defense,
-            isFinal: false,
-            awayEarnedRuns: result1.StateAfter.AwayEarnedRuns,
-            awayUnearnedRuns: result1.StateAfter.AwayUnearnedRuns,
-            homeEarnedRuns: result1.StateAfter.HomeEarnedRuns,
-            homeUnearnedRuns: result1.StateAfter.HomeUnearnedRuns
+        // Set up for PA2: preserve accumulated stats, add new runner on 3rd
+        var stateBeforePA2 = GameStateTestHelper.CreateGameState(
+            inning: stateAfterPA1.Inning,
+            half: stateAfterPA1.Half,
+            outs: stateAfterPA1.Outs,
+            onFirst: stateAfterPA1.OnFirst,
+            onSecond: stateAfterPA1.OnSecond,
+            onThird: true,
+            awayScore: stateAfterPA1.AwayScore,
+            homeScore: stateAfterPA1.HomeScore,
+            awayBattingOrderIndex: stateAfterPA1.AwayBattingOrderIndex,
+            homeBattingOrderIndex: stateAfterPA1.HomeBattingOrderIndex,
+            offense: stateAfterPA1.Offense,
+            defense: stateAfterPA1.Defense,
+            awayEarnedRuns: stateAfterPA1.AwayEarnedRuns,
+            awayUnearnedRuns: stateAfterPA1.AwayUnearnedRuns,
+            homeEarnedRuns: stateAfterPA1.HomeEarnedRuns,
+            homeUnearnedRuns: stateAfterPA1.HomeUnearnedRuns
         );
 
-        var resolution2 = new PaResolution(
+        var roeResolution = new PaResolution(
             OutsAdded: 0,
             RunsScored: 1,
             NewBases: new BaseState(OnFirst: true, OnSecond: false, OnThird: false),
             Type: PaType.ReachOnError, Tag: OutcomeTag.ROE,
             HadError: true
         );
-        var result2 = _scorekeeper.ApplyPlateAppearance(state2, resolution2);
 
+        // Act: Execute PA2 (ROE) - the single act being tested
+        var result2 = scorekeeper.ApplyPlateAppearance(stateBeforePA2, roeResolution);
+
+        // Assert: Verify both runs are tracked correctly (1 earned from PA1, 1 unearned from PA2)
         Assert.Multiple(() => {
-            Assert.That(result2.StateAfter.AwayEarnedRuns, Is.EqualTo(1), "Still 1 earned after PA2");
-            Assert.That(result2.StateAfter.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned after PA2");
-            Assert.That(result2.StateAfter.AwayScore, Is.EqualTo(2), "Total 2 runs");
+            Assert.That(result2.StateAfter.AwayEarnedRuns, Is.EqualTo(1), "1 earned run from clean single (PA1)");
+            Assert.That(result2.StateAfter.AwayUnearnedRuns, Is.EqualTo(1), "1 unearned run from ROE (PA2)");
+            Assert.That(result2.StateAfter.AwayScore, Is.EqualTo(2), "2 total runs scored");
         });
     }
+
     /// <summary>
     /// Test: Document v1-light policy: if ANY runner advances on error, ALL runs are unearned.
     /// PRD Section 3.2: Earned_MultiRun_Single_ErrorOnlyEnablesLeadRunner_V1MarksAllUnearned
@@ -309,13 +316,15 @@ public class EarnedRunTests {
     [Test]
     public void Earned_MultiRun_Single_ErrorOnlyEnablesLeadRunner_V1MarksAllUnearned() {
         // Arrange: Top 5th, runners on 1st and 2nd, 1 out
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 5, half: InningHalf.Top, outs: 1,
-            onFirst: true, onSecond: true, onThird: false,
-            awayScore: 2, homeScore: 1,
-            awayBattingOrderIndex: 4, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 5,
+            outs: 1,
+            onFirst: true,
+            onSecond: true,
+            awayScore: 2,
+            homeScore: 1,
+            awayBattingOrderIndex: 4
         );
 
         var resolution = new PaResolution(
@@ -328,7 +337,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -346,13 +355,15 @@ public class EarnedRunTests {
     [Test]
     public void Unearned_ROE_MultipleRuns_AllUnearned_NoRBI() {
         // Arrange: Top 7th, runners on 2nd and 3rd, 1 out
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 7, half: InningHalf.Top, outs: 1,
-            onFirst: false, onSecond: true, onThird: true,
-            awayScore: 3, homeScore: 4,
-            awayBattingOrderIndex: 2, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 7,
+            outs: 1,
+            onSecond: true,
+            onThird: true,
+            awayScore: 3,
+            homeScore: 4,
+            awayBattingOrderIndex: 2
         );
 
         var resolution = new PaResolution(
@@ -365,7 +376,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -383,13 +394,15 @@ public class EarnedRunTests {
     [Test]
     public void Earned_SacFly_WithError_RunUnearnedButRbiCredited() {
         // Arrange: Bottom 6th, runner on 3rd, 1 out
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 6, half: InningHalf.Bottom, outs: 1,
-            onFirst: false, onSecond: false, onThird: true,
-            awayScore: 3, homeScore: 2,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 5,
-            offense: Team.Home, defense: Team.Away
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 6,
+            half: InningHalf.Bottom,
+            outs: 1,
+            onThird: true,
+            awayScore: 3,
+            homeScore: 2,
+            homeBattingOrderIndex: 5
         );
 
         var resolution = new PaResolution(
@@ -403,7 +416,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         Assert.Multiple(() => {
@@ -444,12 +457,10 @@ public class EarnedRunTests {
     [Test]
     public void Unearned_DoesNotCarryToLaterCleanPlay_V1Light() {
         // Arrange: Start with an error that does NOT score
-        var s = new GameState(0, 0,
-            inning: 4, half: InningHalf.Top, outs: 0,
-            onFirst: false, onSecond: false, onThird: false,
-            awayScore: 0, homeScore: 0,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home);
+        var scorekeeper = new InningScorekeeper();
+        var s = GameStateTestHelper.CreateGameState(
+            inning: 4
+        );
 
         var roe = new PaResolution(
             OutsAdded: 0,
@@ -458,7 +469,7 @@ public class EarnedRunTests {
             Type: PaType.ReachOnError, Tag: OutcomeTag.ROE,
             HadError: true
         );
-        s = _scorekeeper.ApplyPlateAppearance(s, roe).StateAfter;
+        s = scorekeeper.ApplyPlateAppearance(s, roe).StateAfter;
 
         // Next batter: clean double scores runner from first
         var cleanDouble = new PaResolution(
@@ -470,7 +481,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(s, cleanDouble);
+        var result = scorekeeper.ApplyPlateAppearance(s, cleanDouble);
 
         // Assert: under v1-light, that run is EARNED because this PA has no error flags.
         Assert.That(result.StateAfter.AwayEarnedRuns, Is.EqualTo(1));
@@ -483,12 +494,18 @@ public class EarnedRunTests {
     [Test]
     public void Earned_BasesLoadedWalk_RunIsEarned() {
         // Arrange
-        var s = new GameState(0, 0,
-            inning: 5, half: InningHalf.Bottom, outs: 1,
-            onFirst: true, onSecond: true, onThird: true,
-            awayScore: 2, homeScore: 2,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 5,
-            offense: Team.Home, defense: Team.Away);
+        var scorekeeper = new InningScorekeeper();
+        var s = GameStateTestHelper.CreateGameState(
+            inning: 5,
+            half: InningHalf.Bottom,
+            outs: 1,
+            onFirst: true,
+            onSecond: true,
+            onThird: true,
+            awayScore: 2,
+            homeScore: 2,
+            homeBattingOrderIndex: 5
+        );
 
         var walk = new PaResolution(
             OutsAdded: 0,
@@ -498,7 +515,7 @@ public class EarnedRunTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(s, walk);
+        var result = scorekeeper.ApplyPlateAppearance(s, walk);
 
         // Assert
         Assert.That(result.StateAfter.HomeScore, Is.EqualTo(3));

@@ -9,13 +9,6 @@ namespace DiamondSim.Tests.Scoring;
 [TestFixture]
 [Category("Scoring")]
 public class InningScoreTests {
-    private InningScorekeeper _scorekeeper = null!;
-
-    [SetUp]
-    public void Setup() {
-        _scorekeeper = new InningScorekeeper();
-    }
-
     #region Walk-off Tests
 
     /// <summary>
@@ -25,22 +18,14 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_Bottom9thTieBreakingHomeRun_EndsGameImmediately() {
         // Arrange: Tie game, bottom 9th, 2 outs
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 9,
             half: InningHalf.Bottom,
             outs: 2,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 3,
             homeScore: 3,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 5,
-            offense: Team.Home,
-            defense: Team.Away,
-            isFinal: false
+            homeBattingOrderIndex: 5
         );
 
         var resolution = new PaResolution(
@@ -51,7 +36,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.HR);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -70,31 +55,19 @@ public class InningScoreTests {
     [Test]
     public void Walkoff_MidInningBottom10_SetsIsFinal_RecordsPartialRuns_LobZero() {
         // Arrange: Bottom 10th, 1 out, runner on 2nd, tie game
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 10,
             half: InningHalf.Bottom,
             outs: 1,
-            onFirst: false,
             onSecond: true,
-            onThird: false,
             awayScore: 5,
             homeScore: 5,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 3,
-            offense: Team.Home,
-            defense: Team.Away,
-            isFinal: false
+            homeBattingOrderIndex: 3
         );
 
-        // Simulate previous innings (9 complete innings)
-        for (int i = 0; i < 10; i++) {
-            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
-            if (i < 9) {
-                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
-            }
-        }
+        // Simulate previous innings (9 complete innings = 9.5 innings through top of 10th)
+        GameStateTestHelper.RecordInningsThroughTopOf(scorekeeper, throughInning: 9);
 
         var resolution = new PaResolution(
             OutsAdded: 0,
@@ -104,7 +77,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.Single);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -114,11 +87,11 @@ public class InningScoreTests {
         Assert.That(newState.Outs, Is.EqualTo(1), "Outs don't reset on walk-off");
 
         // Verify partial inning runs recorded (not 'X')
-        Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Home, 10), Is.EqualTo(1),
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Home, 10), Is.EqualTo(1),
             "Partial inning should show actual runs scored");
 
         // Verify LOB = 0 for walk-off partial inning (no 3rd out)
-        Assert.That(_scorekeeper.HomeLOB[^1], Is.EqualTo(0),
+        Assert.That(scorekeeper.HomeLOB[^1], Is.EqualTo(0),
             "Walk-off partial inning should have LOB = 0");
     }
 
@@ -133,22 +106,16 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_DoublePlayWith1Out_EndsHalfAndClearsBases() {
         // Arrange: 1 out, runners on 1st and 2nd
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 5,
             half: InningHalf.Top,
             outs: 1,
             onFirst: true,
             onSecond: true,
-            onThird: false,
             awayScore: 2,
             homeScore: 1,
-            awayBattingOrderIndex: 4,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            awayBattingOrderIndex: 4
         );
 
         var resolution = new PaResolution(
@@ -159,7 +126,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -173,7 +140,7 @@ public class InningScoreTests {
         Assert.That(newState.Defense, Is.EqualTo(Team.Away), "Defense should switch to away");
 
         // Verify LOB = 2 (runners on 1st and 2nd at moment of 3rd out)
-        Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(2), "Should record 2 LOB");
+        Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(2), "Should record 2 LOB");
     }
 
     /// <summary>
@@ -183,9 +150,8 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_BasesLoadedWalk_Scores1RunAndBasesRemainLoaded() {
         // Arrange: Bases loaded, 1 out
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 3,
             half: InningHalf.Bottom,
             outs: 1,
@@ -194,11 +160,7 @@ public class InningScoreTests {
             onThird: true,
             awayScore: 2,
             homeScore: 2,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 6,
-            offense: Team.Home,
-            defense: Team.Away,
-            isFinal: false
+            homeBattingOrderIndex: 6
         );
 
         var resolution = new PaResolution(
@@ -209,7 +171,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.BB);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -220,6 +182,57 @@ public class InningScoreTests {
         Assert.That(newState.OnThird, Is.True, "Third base should remain occupied");
         Assert.That(newState.Half, Is.EqualTo(InningHalf.Bottom), "Should still be bottom half");
         Assert.That(newState.Inning, Is.EqualTo(3), "Should still be 3rd inning");
+    }
+
+    /// <summary>
+    /// Test: Third out play that scores runs - runs are credited to inning before transition.
+    /// Regression test: 2 outs, R2+R3. Single plates both, batter is thrown out stretching for the 3rd out.
+    /// Expect the two runs to land in the inning cell before the half flips.
+    /// </summary>
+    [Test]
+    public void ThirdOutPlay_ThatScores_RunsAreCreditedToInningBeforeTransition() {
+        // Arrange: 2 outs, runners on 2nd and 3rd
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 1,
+            half: InningHalf.Top,
+            outs: 2,
+            onSecond: true,
+            onThird: true,
+            awayScore: 0,
+            homeScore: 0,
+            awayBattingOrderIndex: 3
+        );
+
+        // Batter singles: both runners score; batter out at 2B for the 3rd out
+        var resolution = new PaResolution(
+            OutsAdded: 1,
+            RunsScored: 2,
+            NewBases: new BaseState(false, false, false),
+            Type: PaType.Single,
+            Tag: OutcomeTag.Single
+        );
+
+        // Act
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
+        var newState = result.StateAfter;
+
+        // Assert – team score
+        Assert.That(newState.AwayScore, Is.EqualTo(2), "Away team should score 2 runs");
+        Assert.That(newState.HomeScore, Is.EqualTo(0), "Home score should remain unchanged");
+
+        // Assert – half flipped to Bot 1st with 0 outs
+        Assert.That(newState.Half, Is.EqualTo(InningHalf.Bottom), "Should transition to bottom half");
+        Assert.That(newState.Inning, Is.EqualTo(1), "Should still be 1st inning");
+        Assert.That(newState.Outs, Is.EqualTo(0), "Outs should reset to 0");
+
+        // Assert – line score captured the 2 runs in Away 1st
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Away, 1), Is.EqualTo(2),
+            "Line score should show 2 runs for away in 1st inning");
+        Assert.That(scorekeeper.LineScore.AwayTotal, Is.EqualTo(newState.AwayScore),
+            "Line score away total should match game state");
+        Assert.That(scorekeeper.LineScore.HomeTotal, Is.EqualTo(newState.HomeScore),
+            "Line score home total should match game state");
     }
 
     #endregion
@@ -233,22 +246,14 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_TiedAfter9Innings_ContinuesToExtras() {
         // Arrange: Bottom 9th, 3rd out, still tied
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 9,
             half: InningHalf.Bottom,
             outs: 2,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 5,
             homeScore: 5,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 8,
-            offense: Team.Home,
-            defense: Team.Away,
-            isFinal: false
+            homeBattingOrderIndex: 8
         );
 
         var resolution = new PaResolution(
@@ -259,7 +264,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -278,22 +283,12 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_InningExceeds99_ThrowsException() {
         // Arrange: Inning 100 (safety limit exceeded)
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 100,
             half: InningHalf.Top,
-            outs: 0,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 5,
-            homeScore: 5,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            homeScore: 5
         );
 
         var resolution = new PaResolution(
@@ -305,7 +300,7 @@ public class InningScoreTests {
 
         // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() =>
-            _scorekeeper.ApplyPlateAppearance(state, resolution));
+            scorekeeper.ApplyPlateAppearance(state, resolution));
 
         Assert.That(ex!.Message, Does.Contain("exceeded maximum inning limit"));
         Assert.That(ex.Message, Does.Contain("99"));
@@ -322,31 +317,18 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_Top9thEndsWithHomeLeading_SkipsBottom9th() {
         // Arrange: Top 9th, 3rd out, home team leading
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 9,
             half: InningHalf.Top,
             outs: 2,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 3,
             homeScore: 4,
-            awayBattingOrderIndex: 7,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            awayBattingOrderIndex: 7
         );
 
-        // Need to record previous innings first
-        for (int i = 0; i < 9; i++) {
-            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
-            if (i < 8) {
-                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
-            }
-        }
+        // Need to record previous innings first (8.5 innings)
+        GameStateTestHelper.RecordInningsThroughTopOf(scorekeeper);
 
         var resolution = new PaResolution(
             OutsAdded: 1, // 3rd out
@@ -356,7 +338,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -367,9 +349,9 @@ public class InningScoreTests {
         Assert.That(newState.HomeScore, Is.EqualTo(4), "Home score unchanged");
 
         // Line score should show 'X' for home 9th inning
-        Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Home, 9), Is.EqualTo(-1),
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Home, 9), Is.EqualTo(-1),
             "Home 9th should be marked as skipped (-1)");
-        Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"),
+        Assert.That(scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"),
             "Home 9th should display 'X'");
     }
 
@@ -380,22 +362,14 @@ public class InningScoreTests {
     [Test]
     public void ApplyPA_Top9thEndsWithHomeLosing_Bottom9thMustBePlayed() {
         // Arrange: Top 9th, 3rd out, home team losing
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 9,
             half: InningHalf.Top,
             outs: 2,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 5,
             homeScore: 3,
-            awayBattingOrderIndex: 4,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            awayBattingOrderIndex: 4
         );
 
         var resolution = new PaResolution(
@@ -406,7 +380,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -425,22 +399,14 @@ public class InningScoreTests {
     [Test]
     public void Top9_EndsWithHomeTrailing_PlaysBottom9() {
         // Arrange: Top 9th, 3rd out, home team trailing
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 9,
             half: InningHalf.Top,
             outs: 2,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 5,
             homeScore: 3,
-            awayBattingOrderIndex: 2,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            awayBattingOrderIndex: 2
         );
 
         var resolution = new PaResolution(
@@ -451,7 +417,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -469,31 +435,18 @@ public class InningScoreTests {
     [Test]
     public void SkipBottom9_WhenHomeLeadsAfterTop9_IsFinalTrueAndXRecorded() {
         // Arrange: Top 9th, 3rd out, home team leading
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 9,
             half: InningHalf.Top,
             outs: 2,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 3,
             homeScore: 4,
-            awayBattingOrderIndex: 5,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            awayBattingOrderIndex: 5
         );
 
-        // Need to record previous innings first
-        for (int i = 0; i < 9; i++) {
-            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
-            if (i < 8) {
-                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
-            }
-        }
+        // Need to record previous innings first (8.5 innings)
+        GameStateTestHelper.RecordInningsThroughTopOf(scorekeeper);
 
         var resolution = new PaResolution(
             OutsAdded: 1, // 3rd out
@@ -503,7 +456,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -512,9 +465,9 @@ public class InningScoreTests {
         Assert.That(newState.Half, Is.EqualTo(InningHalf.Top), "Should still be top half");
 
         // Verify 'X' recorded for home 9th
-        Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Home, 9), Is.EqualTo(-1),
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Home, 9), Is.EqualTo(-1),
             "Home 9th should be marked as skipped");
-        Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"),
+        Assert.That(scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"),
             "Home 9th should display 'X'");
     }
 
@@ -534,22 +487,14 @@ public class InningScoreTests {
         // in the at-bat loop (PRD-02) and ball-in-play resolution (PRD-03).
 
         // Arrange: Normal game state
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
             inning: 5,
             half: InningHalf.Top,
             outs: 1,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
             awayScore: 3,
             homeScore: 2,
-            awayBattingOrderIndex: 4,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
+            awayBattingOrderIndex: 4
         );
 
         var resolution = new PaResolution(
@@ -560,7 +505,7 @@ public class InningScoreTests {
         Tag: OutcomeTag.InPlayOut);
 
         // Act - should NOT throw because no RNG should be called
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
         var newState = result.StateAfter;
 
         // Assert
@@ -584,55 +529,40 @@ public class InningScoreTests {
     /// </summary>
     [Test]
     public void SimulateGame_9Innings_ProducesValidLineScore() {
-        // Simulate a complete 9-inning game with scoring in various innings
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
-            inning: 1,
-            half: InningHalf.Top,
-            outs: 0,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
-            awayScore: 0,
-            homeScore: 0,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
-        );
+        // Arrange
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateInitialState();
 
         // Simulate 9 innings with various scoring patterns
         // Top 1st: Away scores 2
-        state = ScoreRunsAndEndHalf(state, 2);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 2);
         // Bottom 1st: Home scores 1
-        state = ScoreRunsAndEndHalf(state, 1);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 1);
 
         // Top 2nd: Away scores 0
-        state = ScoreRunsAndEndHalf(state, 0);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 0);
         // Bottom 2nd: Home scores 3
-        state = ScoreRunsAndEndHalf(state, 3);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 3);
 
         // Innings 3-8: No scoring
         for (int i = 3; i <= 8; i++) {
-            state = ScoreRunsAndEndHalf(state, 0); // Top
-            state = ScoreRunsAndEndHalf(state, 0); // Bottom
+            state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Top
+            state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Bottom
         }
 
         // Top 9th: Away scores 1
-        state = ScoreRunsAndEndHalf(state, 1);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 1);
 
         // Bottom 9th: Home scores 0 (home loses 3-4)
-        state = ScoreRunsAndEndHalf(state, 0);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 0);
 
         // Assert
         Assert.That(state.IsFinal, Is.True, "Game should be complete after 9 innings");
-        Assert.That(_scorekeeper.LineScore.AwayTotal, Is.EqualTo(state.AwayScore),
+        Assert.That(scorekeeper.LineScore.AwayTotal, Is.EqualTo(state.AwayScore),
             "Line score away total should match game state");
-        Assert.That(_scorekeeper.LineScore.HomeTotal, Is.EqualTo(state.HomeScore),
+        Assert.That(scorekeeper.LineScore.HomeTotal, Is.EqualTo(state.HomeScore),
             "Line score home total should match game state");
-        Assert.That(_scorekeeper.LineScore.Validate(state.AwayScore, state.HomeScore), Is.True,
+        Assert.That(scorekeeper.LineScore.Validate(state.AwayScore, state.HomeScore), Is.True,
             "Line score should validate correctly");
     }
 
@@ -642,33 +572,18 @@ public class InningScoreTests {
     /// </summary>
     [Test]
     public void SimulateGame_WalkoffHomeRun_EndsInBottom9th() {
-        // Setup: Simulate game to bottom 9th, tie game
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
-            inning: 1,
-            half: InningHalf.Top,
-            outs: 0,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
-            awayScore: 0,
-            homeScore: 0,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
-        );
+        // Arrange
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateInitialState();
 
         // Simulate 8.5 innings with tie score
         for (int i = 1; i <= 8; i++) {
-            state = ScoreRunsAndEndHalf(state, 0); // Top
-            state = ScoreRunsAndEndHalf(state, 0); // Bottom
+            state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Top
+            state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Bottom
         }
 
         // Top 9th: Away scores 3
-        state = ScoreRunsAndEndHalf(state, 3);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 3);
 
         // Bottom 9th: Home scores 3 to tie, then walk-off HR
         // Score 3 runs first
@@ -677,8 +592,8 @@ public class InningScoreTests {
             RunsScored: 3,
             NewBases: new BaseState(false, false, false),
             Type: PaType.HomeRun,
-        Tag: OutcomeTag.HR);
-        var tmpResult1 = _scorekeeper.ApplyPlateAppearance(state, tieRuns);
+            Tag: OutcomeTag.HR);
+        var tmpResult1 = scorekeeper.ApplyPlateAppearance(state, tieRuns);
         state = tmpResult1.StateAfter;
 
         // Walk-off HR
@@ -687,8 +602,8 @@ public class InningScoreTests {
             RunsScored: 1,
             NewBases: new BaseState(false, false, false),
             Type: PaType.HomeRun,
-        Tag: OutcomeTag.HR);
-        var tmpResult2 = _scorekeeper.ApplyPlateAppearance(state, walkoffHR);
+            Tag: OutcomeTag.HR);
+        var tmpResult2 = scorekeeper.ApplyPlateAppearance(state, walkoffHR);
         state = tmpResult2.StateAfter;
 
         // Assert
@@ -699,7 +614,7 @@ public class InningScoreTests {
         Assert.That(state.Half, Is.EqualTo(InningHalf.Bottom), "Should end in bottom half");
 
         // Verify line score shows actual runs in bottom 9th (not 'X')
-        Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Home, 9), Is.EqualTo(4),
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Home, 9), Is.EqualTo(4),
             "Bottom 9th should show 4 runs scored");
     }
 
@@ -709,30 +624,15 @@ public class InningScoreTests {
     /// </summary>
     [Test]
     public void SimulateGame_ExtraInnings_ContinuesUntilWinner() {
-        // Setup: Simulate game tied after 9 innings
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
-            inning: 1,
-            half: InningHalf.Top,
-            outs: 0,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
-            awayScore: 0,
-            homeScore: 0,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
-        );
+        // Arrange
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateInitialState();
 
         // Simulate 9 innings ending in 2-2 tie
         for (int i = 1; i <= 9; i++) {
             int runs = (i == 1 || i == 5) ? 1 : 0; // Score in innings 1 and 5
-            state = ScoreRunsAndEndHalf(state, runs); // Top
-            state = ScoreRunsAndEndHalf(state, runs); // Bottom
+            state = ScoreRunsAndEndHalf(scorekeeper, state, runs); // Top
+            state = ScoreRunsAndEndHalf(scorekeeper, state, runs); // Bottom
         }
 
         // Verify tied after 9
@@ -742,20 +642,20 @@ public class InningScoreTests {
         Assert.That(state.Inning, Is.EqualTo(10), "Should be in 10th inning");
 
         // Top 10th: Away scores 0
-        state = ScoreRunsAndEndHalf(state, 0);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 0);
 
         // Bottom 10th: Home scores 0
-        state = ScoreRunsAndEndHalf(state, 0);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 0);
 
         // Still tied, continue to 11th
         Assert.That(state.IsFinal, Is.False, "Game should continue to 11th");
         Assert.That(state.Inning, Is.EqualTo(11), "Should be in 11th inning");
 
         // Top 11th: Away scores 2
-        state = ScoreRunsAndEndHalf(state, 2);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 2);
 
         // Bottom 11th: Home scores 1 (away wins 4-3)
-        state = ScoreRunsAndEndHalf(state, 1);
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 1);
 
         // Assert
         Assert.That(state.IsFinal, Is.True, "Game should end after completed 11th inning");
@@ -764,9 +664,9 @@ public class InningScoreTests {
         Assert.That(state.Inning, Is.EqualTo(12), "Should advance to 12th after bottom 11th");
 
         // Verify line score extends to 11 innings
-        Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Away, 11), Is.EqualTo(2),
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Away, 11), Is.EqualTo(2),
             "Away should have 2 runs in 11th");
-        Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Home, 11), Is.EqualTo(1),
+        Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Home, 11), Is.EqualTo(1),
             "Home should have 1 run in 11th");
     }
 
@@ -780,47 +680,32 @@ public class InningScoreTests {
     /// </summary>
     [Test]
     public void LineScore_AfterGame_TotalsMatchFinalScores() {
-        // Simulate a game with various scoring
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
-            inning: 1,
-            half: InningHalf.Top,
-            outs: 0,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
-            awayScore: 0,
-            homeScore: 0,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
-        );
+        // Arrange
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateInitialState();
 
         // Simulate scoring in various innings
-        state = ScoreRunsAndEndHalf(state, 3); // Top 1st: Away 3
-        state = ScoreRunsAndEndHalf(state, 1); // Bottom 1st: Home 1
-        state = ScoreRunsAndEndHalf(state, 0); // Top 2nd: Away 0
-        state = ScoreRunsAndEndHalf(state, 2); // Bottom 2nd: Home 2
-        state = ScoreRunsAndEndHalf(state, 1); // Top 3rd: Away 1
-        state = ScoreRunsAndEndHalf(state, 0); // Bottom 3rd: Home 0
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 3); // Top 1st: Away 3
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 1); // Bottom 1st: Home 1
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Top 2nd: Away 0
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 2); // Bottom 2nd: Home 2
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 1); // Top 3rd: Away 1
+        state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Bottom 3rd: Home 0
 
         // Complete remaining innings
         for (int i = 4; i <= 9; i++) {
-            state = ScoreRunsAndEndHalf(state, 0); // Top
+            state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Top
             if (i < 9 || state.HomeScore <= state.AwayScore) {
-                state = ScoreRunsAndEndHalf(state, 0); // Bottom (if needed)
+                state = ScoreRunsAndEndHalf(scorekeeper, state, 0); // Bottom (if needed)
             }
         }
 
         // Assert
-        Assert.That(_scorekeeper.LineScore.AwayTotal, Is.EqualTo(state.AwayScore),
+        Assert.That(scorekeeper.LineScore.AwayTotal, Is.EqualTo(state.AwayScore),
             "Line score away total must match game state");
-        Assert.That(_scorekeeper.LineScore.HomeTotal, Is.EqualTo(state.HomeScore),
+        Assert.That(scorekeeper.LineScore.HomeTotal, Is.EqualTo(state.HomeScore),
             "Line score home total must match game state");
-        Assert.That(_scorekeeper.LineScore.Validate(state.AwayScore, state.HomeScore), Is.True,
+        Assert.That(scorekeeper.LineScore.Validate(state.AwayScore, state.HomeScore), Is.True,
             "Line score validation should pass");
     }
 
@@ -830,24 +715,9 @@ public class InningScoreTests {
     /// </summary>
     [Test]
     public void BoxScore_AfterGame_TeamHitsEqualIndividualHits() {
-        // Simulate several PAs with hits
-        var state = new GameState(
-            balls: 0,
-            strikes: 0,
-            inning: 1,
-            half: InningHalf.Top,
-            outs: 0,
-            onFirst: false,
-            onSecond: false,
-            onThird: false,
-            awayScore: 0,
-            homeScore: 0,
-            awayBattingOrderIndex: 0,
-            homeBattingOrderIndex: 0,
-            offense: Team.Away,
-            defense: Team.Home,
-            isFinal: false
-        );
+        // Arrange
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateInitialState();
 
         // Batter 0: Single
         var single = new PaResolution(
@@ -855,8 +725,8 @@ public class InningScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(true, false, false),
             Type: PaType.Single,
-        Tag: OutcomeTag.Single);
-        var tmpResult3 = _scorekeeper.ApplyPlateAppearance(state, single);
+            Tag: OutcomeTag.Single);
+        var tmpResult3 = scorekeeper.ApplyPlateAppearance(state, single);
         state = tmpResult3.StateAfter;
 
         // Batter 1: Double
@@ -865,8 +735,8 @@ public class InningScoreTests {
             RunsScored: 1,
             NewBases: new BaseState(false, true, false),
             Type: PaType.Double,
-        Tag: OutcomeTag.Double);
-        var tmpResult4 = _scorekeeper.ApplyPlateAppearance(state, double_);
+            Tag: OutcomeTag.Double);
+        var tmpResult4 = scorekeeper.ApplyPlateAppearance(state, double_);
         state = tmpResult4.StateAfter;
 
         // Batter 2: Home Run
@@ -875,8 +745,8 @@ public class InningScoreTests {
             RunsScored: 2,
             NewBases: new BaseState(false, false, false),
             Type: PaType.HomeRun,
-        Tag: OutcomeTag.HR);
-        var tmpResult5 = _scorekeeper.ApplyPlateAppearance(state, homeRun);
+            Tag: OutcomeTag.HR);
+        var tmpResult5 = scorekeeper.ApplyPlateAppearance(state, homeRun);
         state = tmpResult5.StateAfter;
 
         // Batter 3: Strikeout (no hit)
@@ -885,16 +755,16 @@ public class InningScoreTests {
             RunsScored: 0,
             NewBases: new BaseState(false, false, false),
             Type: PaType.K,
-        Tag: OutcomeTag.K);
-        var tmpResult6 = _scorekeeper.ApplyPlateAppearance(state, strikeout);
+            Tag: OutcomeTag.K);
+        var tmpResult6 = scorekeeper.ApplyPlateAppearance(state, strikeout);
         state = tmpResult6.StateAfter;
 
         // Calculate team hits from individual batters
         int teamHits = 0;
         int individualHits = 0;
         for (int i = 0; i < 9; i++) {
-            if (_scorekeeper.BoxScore.AwayBatters.ContainsKey(i)) {
-                var batterStats = _scorekeeper.BoxScore.AwayBatters[i];
+            if (scorekeeper.BoxScore.AwayBatters.ContainsKey(i)) {
+                var batterStats = scorekeeper.BoxScore.AwayBatters[i];
                 individualHits += batterStats.H;
                 teamHits += batterStats.H;
             }
@@ -907,7 +777,7 @@ public class InningScoreTests {
             "Team hits must equal sum of individual batter hits");
 
         // Verify using BoxScore validation method
-        Assert.That(_scorekeeper.BoxScore.ValidateTeamHits(Team.Away, 3), Is.True,
+        Assert.That(scorekeeper.BoxScore.ValidateTeamHits(Team.Away, 3), Is.True,
             "BoxScore validation should confirm team hits match");
     }
 
@@ -921,19 +791,22 @@ public class InningScoreTests {
     [Test]
     public void TriplePlay_OutsAdded3_EndsHalf_LOBFromInstantOfThirdOut() {
         // Arrange: Top 4th, bases loaded, 0 outs
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 4, half: InningHalf.Top, outs: 0,
-            onFirst: true, onSecond: true, onThird: true,
-            awayScore: 2, homeScore: 1,
-            awayBattingOrderIndex: 6, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 4,
+            half: InningHalf.Top,
+            onFirst: true,
+            onSecond: true,
+            onThird: true,
+            awayScore: 2,
+            homeScore: 1,
+            awayBattingOrderIndex: 6
         );
 
         // Need to record previous innings first (pattern from existing tests)
         for (int i = 1; i <= 3; i++) {
-            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
-            _scorekeeper.LineScore.RecordInning(Team.Home, 0);
+            scorekeeper.LineScore.RecordInning(Team.Away, 0);
+            scorekeeper.LineScore.RecordInning(Team.Home, 0);
         }
 
         var resolution = new PaResolution(
@@ -946,7 +819,7 @@ public class InningScoreTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         var snapshot = result.StateAfter.ToTestSnapshot();
@@ -958,9 +831,9 @@ public class InningScoreTests {
             Assert.That(snapshot.OnThird, Is.False, "Bases cleared");
             Assert.That(snapshot.Half, Is.EqualTo(InningHalf.Bottom), "Transition to bottom");
             Assert.That(snapshot.Inning, Is.EqualTo(4), "Still 4th inning");
-            Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(3), "LOB = 3 (bases loaded at 3rd out)");
+            Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(3), "LOB = 3 (bases loaded at 3rd out)");
             // Line score flush verification: ensure runs recorded for away team in 4th inning
-            Assert.That(_scorekeeper.LineScore.GetInningRuns(Team.Away, 4), Is.EqualTo(0),
+            Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Away, 4), Is.EqualTo(0),
                 "Line score should show 0 runs for away in 4th (triple play, no runs scored)");
         });
     }
@@ -973,13 +846,15 @@ public class InningScoreTests {
     [Test]
     public void NonWalkoffHomeRun_NotEnoughToWin_GameContinues() {
         // Arrange: Bottom 9th, home down 3 (2-5), runner on 1st, 1 out
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 9, half: InningHalf.Bottom, outs: 1,
-            onFirst: true, onSecond: false, onThird: false,
-            awayScore: 5, homeScore: 2,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 4,
-            offense: Team.Home, defense: Team.Away
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 9,
+            half: InningHalf.Bottom,
+            outs: 1,
+            onFirst: true,
+            awayScore: 5,
+            homeScore: 2,
+            homeBattingOrderIndex: 4
         );
 
         var resolution = new PaResolution(
@@ -991,7 +866,7 @@ public class InningScoreTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         var snapshot = result.StateAfter.ToTestSnapshot();
@@ -1013,22 +888,20 @@ public class InningScoreTests {
     [Test]
     public void SkipBottom9th_WithRunnersOnAtT9End_BasesDoNotAffectFinal() {
         // Arrange: Top 9th, 2 outs, runners on 1st and 2nd, home leading 6-4
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 9, half: InningHalf.Top, outs: 2,
-            onFirst: true, onSecond: true, onThird: false,
-            awayScore: 4, homeScore: 6,
-            awayBattingOrderIndex: 5, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 9,
+            half: InningHalf.Top,
+            outs: 2,
+            onFirst: true,
+            onSecond: true,
+            awayScore: 4,
+            homeScore: 6,
+            awayBattingOrderIndex: 5
         );
 
-        // Need to record previous innings first
-        for (int i = 0; i < 9; i++) {
-            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
-            if (i < 8) {
-                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
-            }
-        }
+        // Need to record previous innings first (8.5 innings)
+        GameStateTestHelper.RecordInningsThroughTopOf(scorekeeper);
 
         // Final out (strikeout)
         var resolution = new PaResolution(
@@ -1040,14 +913,14 @@ public class InningScoreTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.IsFinal, Is.True, "Game over (home leads)");
-            Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(2), "Away LOB = 2");
-            Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"), "Home 9th shows X");
+            Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(2), "Away LOB = 2");
+            Assert.That(scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"), "Home 9th shows X");
             Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Final: Home 6");
             Assert.That(snapshot.AwayScore, Is.EqualTo(4), "Final: Away 4");
         });
@@ -1061,22 +934,19 @@ public class InningScoreTests {
     [Test]
     public void SkipBottom9th_HomeLeadsAfterT9_WithRunnerOnThird() {
         // Arrange: Top 9th, 2 outs, runner on 3rd, home leading 5-3
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 9, half: InningHalf.Top, outs: 2,
-            onFirst: false, onSecond: false, onThird: true,
-            awayScore: 3, homeScore: 5,
-            awayBattingOrderIndex: 8, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 9,
+            half: InningHalf.Top,
+            outs: 2,
+            onThird: true,
+            awayScore: 3,
+            homeScore: 5,
+            awayBattingOrderIndex: 8
         );
 
-        // Need to record previous innings first
-        for (int i = 0; i < 9; i++) {
-            _scorekeeper.LineScore.RecordInning(Team.Away, 0);
-            if (i < 8) {
-                _scorekeeper.LineScore.RecordInning(Team.Home, 0);
-            }
-        }
+        // Need to record previous innings first (8.5 innings)
+        GameStateTestHelper.RecordInningsThroughTopOf(scorekeeper);
 
         // Final out
         var resolution = new PaResolution(
@@ -1088,14 +958,14 @@ public class InningScoreTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
         var snapshot = result.StateAfter.ToTestSnapshot();
         Assert.Multiple(() => {
             Assert.That(snapshot.IsFinal, Is.True, "Game ends");
-            Assert.That(_scorekeeper.AwayLOB[^1], Is.EqualTo(1), "Away LOB = 1 (R3)");
-            Assert.That(_scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"));
+            Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(1), "Away LOB = 1 (R3)");
+            Assert.That(scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"));
             Assert.That(snapshot.HomeScore, Is.EqualTo(5));
             Assert.That(snapshot.AwayScore, Is.EqualTo(3));
         });
@@ -1109,13 +979,13 @@ public class InningScoreTests {
     [Test]
     public void Lob_ComputedAtInstantOfThirdOut() {
         // Arrange: top 5th, 2 outs, R2/R3
-        var state = new GameState(
-            balls: 0, strikes: 0,
-            inning: 5, half: InningHalf.Top, outs: 2,
-            onFirst: false, onSecond: true, onThird: true,
-            awayScore: 0, homeScore: 0,
-            awayBattingOrderIndex: 0, homeBattingOrderIndex: 0,
-            offense: Team.Away, defense: Team.Home
+        var scorekeeper = new InningScorekeeper();
+        var state = GameStateTestHelper.CreateGameState(
+            inning: 5,
+            half: InningHalf.Top,
+            outs: 2,
+            onSecond: true,
+            onThird: true
         );
 
         // Batter singles; runner from 3rd is thrown out at home = 3rd out.
@@ -1135,13 +1005,13 @@ public class InningScoreTests {
         );
 
         // Act
-        var result = _scorekeeper.ApplyPlateAppearance(state, resolution);
+        var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert: half-inning ends (new half starts with outs reset)
         Assert.That(result.StateAfter.Outs, Is.EqualTo(0));
 
         // LOB should be 1 (only R2 at 3B at the instant of the third out)
-        Assert.That(_scorekeeper.AwayTotalLOB, Is.EqualTo(1));
+        Assert.That(scorekeeper.AwayTotalLOB, Is.EqualTo(1));
     }
 
 
@@ -1152,10 +1022,11 @@ public class InningScoreTests {
     /// Helper method to score runs and end a half-inning.
     /// Simulates scoring the specified number of runs, then recording 3 outs to end the half.
     /// </summary>
+    /// <param name="scorekeeper">The scorekeeper instance to use</param>
     /// <param name="state">Current game state</param>
     /// <param name="runs">Number of runs to score in this half-inning</param>
     /// <returns>Updated game state after half-inning completes</returns>
-    private GameState ScoreRunsAndEndHalf(GameState state, int runs) {
+    private static GameState ScoreRunsAndEndHalf(InningScorekeeper scorekeeper, GameState state, int runs) {
         // Score runs if any
         if (runs > 0) {
             var scoreResolution = new PaResolution(
@@ -1163,8 +1034,8 @@ public class InningScoreTests {
                 RunsScored: runs,
                 NewBases: new BaseState(false, false, false),
                 Type: PaType.HomeRun,
-            Tag: OutcomeTag.HR);
-            var tmpResult7 = _scorekeeper.ApplyPlateAppearance(state, scoreResolution);
+                Tag: OutcomeTag.HR);
+            var tmpResult7 = scorekeeper.ApplyPlateAppearance(state, scoreResolution);
             state = tmpResult7.StateAfter;
         }
 
@@ -1175,8 +1046,8 @@ public class InningScoreTests {
                 RunsScored: 0,
                 NewBases: new BaseState(false, false, false),
                 Type: PaType.InPlayOut,
-            Tag: OutcomeTag.InPlayOut);
-            var tmpResult8 = _scorekeeper.ApplyPlateAppearance(state, outResolution);
+                Tag: OutcomeTag.InPlayOut);
+            var tmpResult8 = scorekeeper.ApplyPlateAppearance(state, outResolution);
             state = tmpResult8.StateAfter;
         }
 

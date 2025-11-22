@@ -557,4 +557,88 @@ public class GameReportValidationTests {
             return sb.ToString();
         }
     }
+
+    /// <summary>
+    /// Regression test for bugs where runs scored on 3rd out weren't credited to correct inning.
+    /// These specific seeds exposed issues where:
+    /// - Runs scored on a play that resulted in the 3rd out were not being recorded in the line score
+    /// - The inning sum didn't match the final score because runs were lost during half-inning transitions
+    /// - Specifically affected plays where runners scored before the 3rd out was recorded
+    /// </summary>
+    [TestCase(650162642)]
+    [TestCase(124450555)]
+    [TestCase(692792209)]
+    [TestCase(2094557560)]
+    public void LineScore_KnownBugSeeds_InningSumsMatchFinalScore(int seed) {
+        // Arrange: pass (home, away) so away row prints first in the line score
+        const string home = "Robots";
+        const string away = "Androids";
+        var sim = new GameSimulator(home, away, seed);
+
+        // Act
+        string report = sim.RunGame();
+
+        // Assert
+        var parsed = ParseLineScoreFromReport(report, home, away);
+
+        int awaySum = parsed.AwayInnings.Sum();
+        int homeSum = parsed.HomeInnings.Sum();
+
+        Assert.That(awaySum, Is.EqualTo(parsed.AwayR),
+            $"Seed {seed}: away inning sums ({awaySum}) must equal R ({parsed.AwayR}).");
+        Assert.That(homeSum, Is.EqualTo(parsed.HomeR),
+            $"Seed {seed}: home inning sums ({homeSum}) must equal R ({parsed.HomeR}).");
+    }
+
+    // Helper method for parsing line score from report
+    private static LineScoreSnapshot ParseLineScoreFromReport(string report, string homeName, string awayName) {
+        // We're parsing the table produced by GameReportFormatter.FormatLineScore():
+        //
+        //                | 1 2 3 4 5 6 7 8 9 |  R  H  E
+        // ---------------|-------------------|---------
+        // <awayName>     | x x x x x x x x x |  R  H  E
+        // <homeName>     | x x x x x x x x x |  R  H  E
+        //
+        // Where cells can be digits or 'X' (skipped bottom 9th).
+
+        var lines = report.Split('\n')
+                          .Select(l => l.TrimEnd('\r'))
+                          .ToList();
+
+        // Find the header ruler line, then the two team rows right after it
+        int sepIdx = lines.FindIndex(l => l.StartsWith("---------------|"));
+        Assert.That(sepIdx, Is.GreaterThanOrEqualTo(0), "Could not find line score separator.");
+
+        // Away row should start with awayName + '|'
+        var awayLine = lines.Skip(sepIdx + 1).First(l => l.StartsWith(awayName));
+        var homeLine = lines.Skip(sepIdx + 2).First(l => l.StartsWith(homeName));
+
+        static (int[] innings, int R) ParseRow(string row) {
+            // Split on '|' into [team, innings, tail]
+            var parts = row.Split('|');
+            Assert.That(parts.Length, Is.GreaterThanOrEqualTo(3), $"Unexpected line score row: '{row}'");
+
+            var inningsCells = Regex.Split(parts[1].Trim(), @"\s+")
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .ToArray();
+
+            // Last chunk has " R  H  E" aligned; we only need R
+            var tailCells = Regex.Split(parts[2].Trim(), @"\s+")
+                                 .Where(s => !string.IsNullOrWhiteSpace(s))
+                                 .ToArray();
+
+            Assert.That(tailCells.Length, Is.GreaterThanOrEqualTo(3), $"Missing R/H/E in: '{row}'");
+
+            int r = int.Parse(tailCells[0]); // first is R
+            var innings = inningsCells.Select(c => c == "X" ? 0 : int.Parse(c)).ToArray();
+            return (innings, r);
+        }
+
+        var (awayInnings, awayR) = ParseRow(awayLine);
+        var (homeInnings, homeR) = ParseRow(homeLine);
+
+        return new LineScoreSnapshot(awayInnings, homeInnings, awayR, homeR);
+    }
+
+    private sealed record LineScoreSnapshot(int[] AwayInnings, int[] HomeInnings, int AwayR, int HomeR);
 }
