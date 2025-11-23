@@ -35,11 +35,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Home should score exactly 1 run to win");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(3), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game should end");
+            Assert.That(resultState.HomeScore, Is.EqualTo(4), "Home should score exactly 1 run to win");
+            Assert.That(resultState.AwayScore, Is.EqualTo(3), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game should end");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -71,11 +71,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(7), "All 4 runs count for walk-off HR");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game should end");
+            Assert.That(resultState.HomeScore, Is.EqualTo(7), "All 4 runs count for walk-off HR");
+            Assert.That(resultState.AwayScore, Is.EqualTo(5), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game should end");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -106,11 +106,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "All 4 runs count for walk-off grand slam");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(2), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game should end");
+            Assert.That(resultState.HomeScore, Is.EqualTo(6), "All 4 runs count for walk-off grand slam");
+            Assert.That(resultState.AwayScore, Is.EqualTo(2), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game should end");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -139,11 +139,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(2), "Solo HR counts as 1 run");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(1), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game should end");
+            Assert.That(resultState.HomeScore, Is.EqualTo(2), "Solo HR counts as 1 run");
+            Assert.That(resultState.AwayScore, Is.EqualTo(1), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game should end");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -174,11 +174,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(5), "Only 2 runs needed to win");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(4), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game should end");
+            Assert.That(resultState.HomeScore, Is.EqualTo(5), "Only 2 runs needed to win");
+            Assert.That(resultState.AwayScore, Is.EqualTo(4), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game should end");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -208,15 +208,15 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(1), "Only 1 run needed to win");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(0), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game should end");
+            Assert.That(resultState.HomeScore, Is.EqualTo(1), "Only 1 run needed to win");
+            Assert.That(resultState.AwayScore, Is.EqualTo(0), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game should end");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0 (not 3)");
-            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
-            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared on walk-off");
-            Assert.That(snapshot.OnThird, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnFirst, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnSecond, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnThird, Is.False, "Bases cleared on walk-off");
         });
     }
 
@@ -244,12 +244,12 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.AwayScore, Is.EqualTo(3), "Away scores in top 9th");
-            Assert.That(snapshot.HomeScore, Is.EqualTo(2), "Home score unchanged");
-            Assert.That(snapshot.IsFinal, Is.False, "Game continues - home gets bottom 9th");
-            Assert.That(snapshot.OnFirst, Is.True, "Batter on first");
+            Assert.That(resultState.AwayScore, Is.EqualTo(3), "Away scores in top 9th");
+            Assert.That(resultState.HomeScore, Is.EqualTo(2), "Home score unchanged");
+            Assert.That(resultState.IsFinal, Is.False, "Game continues - home gets bottom 9th");
+            Assert.That(resultState.OnFirst, Is.True, "Batter on first");
         });
     }
 
@@ -277,11 +277,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Home wins in extras");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game ends on walk-off in extras");
+            Assert.That(resultState.HomeScore, Is.EqualTo(6), "Home wins in extras");
+            Assert.That(resultState.AwayScore, Is.EqualTo(5), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game ends on walk-off in extras");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -312,11 +312,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(8), "All 3 runs count for walk-off HR in extras");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(6), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game ends");
+            Assert.That(resultState.HomeScore, Is.EqualTo(8), "All 3 runs count for walk-off HR in extras");
+            Assert.That(resultState.AwayScore, Is.EqualTo(6), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game ends");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -344,12 +344,12 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Run counts normally");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(2), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.False, "Game continues - no walk-off when already leading");
-            Assert.That(snapshot.OnFirst, Is.True, "Batter on first");
+            Assert.That(resultState.HomeScore, Is.EqualTo(6), "Run counts normally");
+            Assert.That(resultState.AwayScore, Is.EqualTo(2), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.False, "Game continues - no walk-off when already leading");
+            Assert.That(resultState.OnFirst, Is.True, "Batter on first");
         });
     }
 
@@ -380,11 +380,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Only 1 run needed to win");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(3), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game ends on walk-off walk");
+            Assert.That(resultState.HomeScore, Is.EqualTo(4), "Only 1 run needed to win");
+            Assert.That(resultState.AwayScore, Is.EqualTo(3), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game ends on walk-off walk");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
         });
     }
@@ -422,15 +422,15 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Only 1 run needed to win");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Away score unchanged");
-            Assert.That(snapshot.IsFinal, Is.True, "Game ends on walk-off");
+            Assert.That(resultState.HomeScore, Is.EqualTo(6), "Only 1 run needed to win");
+            Assert.That(resultState.AwayScore, Is.EqualTo(5), "Away score unchanged");
+            Assert.That(resultState.IsFinal, Is.True, "Game ends on walk-off");
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
-            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
-            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared on walk-off");
-            Assert.That(snapshot.OnThird, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnFirst, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnSecond, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnThird, Is.False, "Bases cleared on walk-off");
             Assert.That(result.StateAfter.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (ROE)");
         });
     }
@@ -468,15 +468,15 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(4), "Only 1 run needed");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(3));
-            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(resultState.HomeScore, Is.EqualTo(4), "Only 1 run needed");
+            Assert.That(resultState.AwayScore, Is.EqualTo(3));
+            Assert.That(resultState.IsFinal, Is.True);
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
-            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
-            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared");
-            Assert.That(snapshot.OnThird, Is.False, "Bases cleared");
+            Assert.That(resultState.OnFirst, Is.False, "Bases cleared");
+            Assert.That(resultState.OnSecond, Is.False, "Bases cleared");
+            Assert.That(resultState.OnThird, Is.False, "Bases cleared");
             Assert.That(result.StateAfter.HomeEarnedRuns, Is.GreaterThan(0), "Run is earned (no error)");
         });
     }
@@ -515,10 +515,10 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(3), "Walk-off on sac fly");
-            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(resultState.HomeScore, Is.EqualTo(3), "Walk-off on sac fly");
+            Assert.That(resultState.IsFinal, Is.True);
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
             Assert.That(result.StateAfter.HomeUnearnedRuns, Is.GreaterThan(0), "Run is unearned (error-assisted)");
         });
@@ -556,14 +556,14 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Exactly 2 runs to win");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(5));
-            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(resultState.HomeScore, Is.EqualTo(6), "Exactly 2 runs to win");
+            Assert.That(resultState.AwayScore, Is.EqualTo(5));
+            Assert.That(resultState.IsFinal, Is.True);
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0), "Walk-off LOB always 0");
-            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared on walk-off");
-            Assert.That(snapshot.OnSecond, Is.False, "Batter not on 2nd (walk-off suppresses)");
+            Assert.That(resultState.OnFirst, Is.False, "Bases cleared on walk-off");
+            Assert.That(resultState.OnSecond, Is.False, "Batter not on 2nd (walk-off suppresses)");
             Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(2), "Both runs earned");
         });
     }
@@ -601,11 +601,11 @@ public class WalkoffTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(7), "ALL 4 runs count (HR exception)");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(5));
-            Assert.That(snapshot.IsFinal, Is.True);
+            Assert.That(resultState.HomeScore, Is.EqualTo(7), "ALL 4 runs count (HR exception)");
+            Assert.That(resultState.AwayScore, Is.EqualTo(5));
+            Assert.That(resultState.IsFinal, Is.True);
             Assert.That(scorekeeper.HomeLOB.Last(), Is.EqualTo(0));
             Assert.That(result.StateAfter.HomeEarnedRuns, Is.EqualTo(4), "All runs earned");
         });

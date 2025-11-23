@@ -822,15 +822,15 @@ public class InningScoreTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.AwayScore, Is.EqualTo(2), "No runs");
-            Assert.That(snapshot.Outs, Is.EqualTo(0), "Outs reset");
-            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
-            Assert.That(snapshot.OnSecond, Is.False, "Bases cleared");
-            Assert.That(snapshot.OnThird, Is.False, "Bases cleared");
-            Assert.That(snapshot.Half, Is.EqualTo(InningHalf.Bottom), "Transition to bottom");
-            Assert.That(snapshot.Inning, Is.EqualTo(4), "Still 4th inning");
+            Assert.That(resultState.AwayScore, Is.EqualTo(2), "No runs");
+            Assert.That(resultState.Outs, Is.EqualTo(0), "Outs reset");
+            Assert.That(resultState.OnFirst, Is.False, "Bases cleared");
+            Assert.That(resultState.OnSecond, Is.False, "Bases cleared");
+            Assert.That(resultState.OnThird, Is.False, "Bases cleared");
+            Assert.That(resultState.Half, Is.EqualTo(InningHalf.Bottom), "Transition to bottom");
+            Assert.That(resultState.Inning, Is.EqualTo(4), "Still 4th inning");
             Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(3), "LOB = 3 (bases loaded at 3rd out)");
             // Line score flush verification: ensure runs recorded for away team in 4th inning
             Assert.That(scorekeeper.LineScore.GetInningRuns(Team.Away, 4), Is.EqualTo(0),
@@ -869,14 +869,14 @@ public class InningScoreTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.HomeScore, Is.EqualTo(4), "All runs count for HR");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(5), "Still leading");
-            Assert.That(snapshot.IsFinal, Is.False, "Game continues");
-            Assert.That(snapshot.Outs, Is.EqualTo(1), "Outs unchanged");
-            Assert.That(snapshot.OnFirst, Is.False, "Bases cleared");
-            Assert.That(snapshot.Half, Is.EqualTo(InningHalf.Bottom), "Still bottom 9th");
+            Assert.That(resultState.HomeScore, Is.EqualTo(4), "All runs count for HR");
+            Assert.That(resultState.AwayScore, Is.EqualTo(5), "Still leading");
+            Assert.That(resultState.IsFinal, Is.False, "Game continues");
+            Assert.That(resultState.Outs, Is.EqualTo(1), "Outs unchanged");
+            Assert.That(resultState.OnFirst, Is.False, "Bases cleared");
+            Assert.That(resultState.Half, Is.EqualTo(InningHalf.Bottom), "Still bottom 9th");
         });
     }
 
@@ -916,13 +916,13 @@ public class InningScoreTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.IsFinal, Is.True, "Game over (home leads)");
+            Assert.That(resultState.IsFinal, Is.True, "Game over (home leads)");
             Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(2), "Away LOB = 2");
             Assert.That(scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"), "Home 9th shows X");
-            Assert.That(snapshot.HomeScore, Is.EqualTo(6), "Final: Home 6");
-            Assert.That(snapshot.AwayScore, Is.EqualTo(4), "Final: Away 4");
+            Assert.That(resultState.HomeScore, Is.EqualTo(6), "Final: Home 6");
+            Assert.That(resultState.AwayScore, Is.EqualTo(4), "Final: Away 4");
         });
     }
 
@@ -961,13 +961,13 @@ public class InningScoreTests {
         var result = scorekeeper.ApplyPlateAppearance(state, resolution);
 
         // Assert
-        var snapshot = result.StateAfter.ToTestSnapshot();
+        var resultState = result.StateAfter;
         Assert.Multiple(() => {
-            Assert.That(snapshot.IsFinal, Is.True, "Game ends");
+            Assert.That(resultState.IsFinal, Is.True, "Game ends");
             Assert.That(scorekeeper.AwayLOB[^1], Is.EqualTo(1), "Away LOB = 1 (R3)");
             Assert.That(scorekeeper.LineScore.GetInningDisplay(Team.Home, 9), Is.EqualTo("X"));
-            Assert.That(snapshot.HomeScore, Is.EqualTo(5));
-            Assert.That(snapshot.AwayScore, Is.EqualTo(3));
+            Assert.That(resultState.HomeScore, Is.EqualTo(5));
+            Assert.That(resultState.AwayScore, Is.EqualTo(3));
         });
     }
 

@@ -263,7 +263,21 @@ public class GameState {
     /// <returns><c>true</c> if the specified object is equal to the current GameState; otherwise, <c>false</c>.</returns>
     public override bool Equals(object? obj) {
         if (obj is GameState other) {
-            return Balls == other.Balls && Strikes == other.Strikes;
+            return Balls == other.Balls
+                && Strikes == other.Strikes
+                && Inning == other.Inning
+                && Half == other.Half
+                && Outs == other.Outs
+                && OnFirst == other.OnFirst
+                && OnSecond == other.OnSecond
+                && OnThird == other.OnThird
+                && AwayScore == other.AwayScore
+                && HomeScore == other.HomeScore
+                && AwayBattingOrderIndex == other.AwayBattingOrderIndex
+                && HomeBattingOrderIndex == other.HomeBattingOrderIndex
+                && Offense == other.Offense
+                && Defense == other.Defense
+                && IsFinal == other.IsFinal;
         }
         return false;
     }
@@ -273,7 +287,23 @@ public class GameState {
     /// </summary>
     /// <returns>A hash code for the current GameState.</returns>
     public override int GetHashCode() {
-        return HashCode.Combine(Balls, Strikes);
+        var hash = new HashCode();
+        hash.Add(Balls);
+        hash.Add(Strikes);
+        hash.Add(Inning);
+        hash.Add(Half);
+        hash.Add(Outs);
+        hash.Add(OnFirst);
+        hash.Add(OnSecond);
+        hash.Add(OnThird);
+        hash.Add(AwayScore);
+        hash.Add(HomeScore);
+        hash.Add(AwayBattingOrderIndex);
+        hash.Add(HomeBattingOrderIndex);
+        hash.Add(Offense);
+        hash.Add(Defense);
+        hash.Add(IsFinal);
+        return hash.ToHashCode();
     }
 
     /// <summary>
