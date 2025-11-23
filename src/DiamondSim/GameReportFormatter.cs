@@ -3,6 +3,11 @@ using System.Text;
 
 namespace DiamondSim;
 
+// TODO: REFACTOR - Consider Strategy pattern with IGameResultFormatter interface (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
+// Options: 1) Extension method: result.ToConsoleReport()
+//          2) Strategy pattern: IGameResultFormatter with implementations (ConsoleFormatter, JsonFormatter, DbFormatter)
+//          3) Keep as class but accept GameResult instead of 11 parameters
+// Extension method is simplest for now, Strategy pattern better for DI/testing multiple formats
 /// <summary>
 /// Formats the complete game report including header, line score, play log,
 /// team totals, box scores, and footer with LogHash.
@@ -20,6 +25,7 @@ public class GameReportFormatter {
     private readonly List<Batter> _homeLineup;
     private readonly List<Batter> _awayLineup;
 
+    // TODO: REFACTOR - Replace 11-parameter constructor. Future: IGameResultFormatter interface for DI
     public GameReportFormatter(
         string homeTeamName,
         string awayTeamName,

@@ -14,6 +14,7 @@ public class GameSimulator {
     private readonly AtBatSimulator _atBatSimulator;
     private readonly BaseRunnerAdvancement _baseRunnerAdvancement;
     private readonly InningScorekeeper _scorekeeper;
+    // TODO: REFACTOR - Change to List<PlayLogEntry> when implementing GameResult (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
     private readonly List<string> _playLog;
 
     private List<Batter> _homeLineup = new();
@@ -42,6 +43,9 @@ public class GameSimulator {
         _playLog = new List<string>();
     }
 
+    // TODO: REFACTOR - Return GameResult object instead of string (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
+    // Current implementation violates SRP by mixing simulation with formatting.
+    // Plan: Add RunGameV2() returning GameResult, make this method a wrapper calling RunGameV2().ToConsoleReport()
     /// <summary>
     /// Runs a complete game simulation and returns the formatted report.
     /// </summary>
@@ -199,6 +203,8 @@ public class GameSimulator {
         return team == Team.Home ? _homeTeamName : _awayTeamName;
     }
 
+    // TODO: REFACTOR - This method should create PlayLogEntry objects instead of strings (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
+    // The formatting logic should move to PlayLogEntry.ToDisplayString()
     /// <summary>
     /// Builds a play-by-play log entry for the plate appearance.
     /// </summary>
