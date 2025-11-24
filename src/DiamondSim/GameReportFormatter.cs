@@ -3,53 +3,16 @@ using System.Text;
 
 namespace DiamondSim;
 
-// TODO: REFACTOR - Consider Strategy pattern with IGameResultFormatter interface (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
-// Options: 1) Extension method: result.ToConsoleReport()
-//          2) Strategy pattern: IGameResultFormatter with implementations (ConsoleFormatter, JsonFormatter, DbFormatter)
-//          3) Keep as class but accept GameResult instead of 11 parameters
-// Extension method is simplest for now, Strategy pattern better for DI/testing multiple formats
 /// <summary>
 /// Formats the complete game report including header, line score, play log,
 /// team totals, box scores, and footer with LogHash.
+/// Refactored to accept GameResult object (Phase 6 of PRD 20251123_02).
 /// </summary>
 public class GameReportFormatter {
-    private readonly string _homeTeamName;
-    private readonly string _awayTeamName;
-    private readonly int _seed;
-    private readonly DateTime _timestamp;
-    private readonly LineScore _lineScore;
-    private readonly BoxScore _boxScore;
-    private readonly List<string> _playLog;
-    private readonly GameState _finalState;
-    private readonly InningScorekeeper _scorekeeper;
-    private readonly List<Batter> _homeLineup;
-    private readonly List<Batter> _awayLineup;
+    private readonly GameResult _result;
 
-    // TODO: REFACTOR - Replace 11-parameter constructor. Future: IGameResultFormatter interface for DI
-    public GameReportFormatter(
-        string homeTeamName,
-        string awayTeamName,
-        int seed,
-        DateTime timestamp,
-        LineScore lineScore,
-        BoxScore boxScore,
-        List<string> playLog,
-        GameState finalState,
-        InningScorekeeper scorekeeper,
-        List<Batter> homeLineup,
-        List<Batter> awayLineup) {
-
-        _homeTeamName = homeTeamName;
-        _awayTeamName = awayTeamName;
-        _seed = seed;
-        _timestamp = timestamp;
-        _lineScore = lineScore;
-        _boxScore = boxScore;
-        _playLog = playLog;
-        _finalState = finalState;
-        _scorekeeper = scorekeeper;
-        _homeLineup = homeLineup;
-        _awayLineup = awayLineup;
+    public GameReportFormatter(GameResult result) {
+        _result = result ?? throw new ArgumentNullException(nameof(result));
     }
 
     /// <summary>
@@ -69,8 +32,8 @@ public class GameReportFormatter {
         // Play Log
         sb.AppendLine("PLAY LOG");
         sb.AppendLine("========");
-        foreach (var entry in _playLog) {
-            sb.AppendLine(entry);
+        foreach (var entry in _result.PlayLog) {
+            sb.AppendLine(entry.ToPlayLogString());
         }
         sb.AppendLine();
 
@@ -92,8 +55,8 @@ public class GameReportFormatter {
 
     private string FormatHeader() {
         var sb = new StringBuilder();
-        sb.AppendLine($"{_awayTeamName} @ {_homeTeamName} — Seed: {_seed}");
-        sb.AppendLine(FormatTimestamp(_timestamp));
+        sb.AppendLine($"{_result.Metadata.AwayTeamName} @ {_result.Metadata.HomeTeamName} — Seed: {_result.Metadata.Seed}");
+        sb.AppendLine(FormatTimestamp(_result.Metadata.Timestamp));
         sb.AppendLine("DH: ON");
         return sb.ToString().TrimEnd();
     }
@@ -113,7 +76,7 @@ public class GameReportFormatter {
         const int RHE_WIDTH = 3;     // Space + 2 digits each
 
         // Determine max innings to display (at least 9, or more if extras were played)
-        int maxInnings = Math.Max(9, Math.Max(_lineScore.AwayInnings.Count, _lineScore.HomeInnings.Count));
+        int maxInnings = Math.Max(9, Math.Max(_result.LineScore.AwayInnings.Count, _result.LineScore.HomeInnings.Count));
 
         // Header row
         sb.Append($"{"",TEAM_WIDTH}|");
@@ -131,24 +94,24 @@ public class GameReportFormatter {
         sb.AppendLine(new string('-', RHE_WIDTH * 3));
 
         // Away team row
-        sb.Append($"{_awayTeamName,-TEAM_WIDTH}|");
+        sb.Append($"{_result.Metadata.AwayTeamName,-TEAM_WIDTH}|");
         for (int i = 1; i <= maxInnings; i++) {
-            string display = _lineScore.GetInningDisplay(Team.Away, i);
+            string display = _result.LineScore.GetInningDisplay(Team.Away, i);
             sb.Append($"{display,INNING_WIDTH}");
         }
-        int awayR = _lineScore.AwayTotal;
-        int awayH = _boxScore.AwayBatters.Values.Sum(b => b.H);
+        int awayR = _result.LineScore.AwayTotal;
+        int awayH = _result.BoxScore.AwayBatters.Values.Sum(b => b.H);
         int awayE = CountErrors(Team.Away);
         sb.AppendLine($" |{awayR,RHE_WIDTH}{awayH,RHE_WIDTH}{awayE,RHE_WIDTH}");
 
         // Home team row
-        sb.Append($"{_homeTeamName,-TEAM_WIDTH}|");
+        sb.Append($"{_result.Metadata.HomeTeamName,-TEAM_WIDTH}|");
         for (int i = 1; i <= maxInnings; i++) {
-            string display = _lineScore.GetInningDisplay(Team.Home, i);
+            string display = _result.LineScore.GetInningDisplay(Team.Home, i);
             sb.Append($"{display,INNING_WIDTH}");
         }
-        int homeR = _lineScore.HomeTotal;
-        int homeH = _boxScore.HomeBatters.Values.Sum(b => b.H);
+        int homeR = _result.LineScore.HomeTotal;
+        int homeH = _result.BoxScore.HomeBatters.Values.Sum(b => b.H);
         int homeE = CountErrors(Team.Home);
         sb.AppendLine($" |{homeR,RHE_WIDTH}{homeH,RHE_WIDTH}{homeE,RHE_WIDTH}");
 
@@ -157,7 +120,7 @@ public class GameReportFormatter {
 
     private int CountErrors(Team team) {
         // E = ROE count (simplified v1 - no explicit fielding errors)
-        var batters = team == Team.Away ? _boxScore.AwayBatters : _boxScore.HomeBatters;
+        var batters = team == Team.Away ? _result.BoxScore.AwayBatters : _result.BoxScore.HomeBatters;
         // In v1, we don't track ROE separately in box score, so return 0 for now
         // This will be properly tracked when we add error tracking to BoxScore
         return 0;
@@ -166,21 +129,21 @@ public class GameReportFormatter {
     private string FormatTeamTotals() {
         var sb = new StringBuilder();
 
-        int awayR = _lineScore.AwayTotal;
-        int homeR = _lineScore.HomeTotal;
-        int awayH = _boxScore.AwayBatters.Values.Sum(b => b.H);
-        int homeH = _boxScore.HomeBatters.Values.Sum(b => b.H);
+        int awayR = _result.LineScore.AwayTotal;
+        int homeR = _result.LineScore.HomeTotal;
+        int awayH = _result.BoxScore.AwayBatters.Values.Sum(b => b.H);
+        int homeH = _result.BoxScore.HomeBatters.Values.Sum(b => b.H);
         int awayE = CountErrors(Team.Away);
         int homeE = CountErrors(Team.Home);
-        int awayLOB = _scorekeeper.AwayTotalLOB;
-        int homeLOB = _scorekeeper.HomeTotalLOB;
+        int awayLOB = _result.AwayTotalLOB;
+        int homeLOB = _result.HomeTotalLOB;
 
         // Final score line (ties should never occur with extras enabled)
-        sb.AppendLine($"Final: {_awayTeamName} {awayR} — {_homeTeamName} {homeR}");
+        sb.AppendLine($"Final: {_result.Metadata.AwayTeamName} {awayR} — {_result.Metadata.HomeTeamName} {homeR}");
 
         // Team stats
-        sb.AppendLine($"{_awayTeamName}: {awayR} R, {awayH} H, {awayE} E, {awayLOB} LOB");
-        sb.AppendLine($"{_homeTeamName}: {homeR} R, {homeH} H, {homeE} E, {homeLOB} LOB");
+        sb.AppendLine($"{_result.Metadata.AwayTeamName}: {awayR} R, {awayH} H, {awayE} E, {awayLOB} LOB");
+        sb.AppendLine($"{_result.Metadata.HomeTeamName}: {homeR} R, {homeH} H, {homeE} E, {homeLOB} LOB");
 
         return sb.ToString().TrimEnd();
     }
@@ -205,13 +168,13 @@ public class GameReportFormatter {
         const int HR_WIDTH = 4;
 
         // Away team batting
-        string awayHeader = $"{_awayTeamName.ToUpper()} BATTING".PadRight(NAME_WIDTH);
+        string awayHeader = $"{_result.Metadata.AwayTeamName.ToUpper()} BATTING".PadRight(NAME_WIDTH);
         sb.AppendLine($"{awayHeader}{"PA",PA_WIDTH}{"AB",AB_WIDTH}{"H",H_WIDTH}{"RBI",RBI_WIDTH}{"BB",BB_WIDTH}{"K",K_WIDTH}{"HR",HR_WIDTH}");
         sb.AppendLine("---------------------------------------------------------");
 
         for (int i = 0; i < 9; i++) {
-            if (_boxScore.AwayBatters.TryGetValue(i, out var stats)) {
-                string playerName = _awayLineup[i].Name;
+            if (_result.BoxScore.AwayBatters.TryGetValue(i, out var stats)) {
+                string playerName = _result.AwayLineup.Batters[i].Name;
                 if (i == 8) playerName += " (DH)"; // Mark 9th batter as DH
 
                 sb.AppendLine($"{playerName,-NAME_WIDTH}{stats.PA,PA_WIDTH}{stats.AB,AB_WIDTH}{stats.H,H_WIDTH}{stats.RBI,RBI_WIDTH}{stats.BB,BB_WIDTH}{stats.K,K_WIDTH}{stats.HR,HR_WIDTH}");
@@ -219,7 +182,7 @@ public class GameReportFormatter {
         }
 
         // Totals
-        var awayTotals = _boxScore.AwayBatters.Values;
+        var awayTotals = _result.BoxScore.AwayBatters.Values;
         int totalPA = awayTotals.Sum(b => b.PA);
         int totalAB = awayTotals.Sum(b => b.AB);
         int totalH = awayTotals.Sum(b => b.H);
@@ -233,13 +196,13 @@ public class GameReportFormatter {
         sb.AppendLine();
 
         // Home team batting
-        string homeHeader = $"{_homeTeamName.ToUpper()} BATTING".PadRight(NAME_WIDTH);
+        string homeHeader = $"{_result.Metadata.HomeTeamName.ToUpper()} BATTING".PadRight(NAME_WIDTH);
         sb.AppendLine($"{homeHeader}{"PA",PA_WIDTH}{"AB",AB_WIDTH}{"H",H_WIDTH}{"RBI",RBI_WIDTH}{"BB",BB_WIDTH}{"K",K_WIDTH}{"HR",HR_WIDTH}");
         sb.AppendLine("---------------------------------------------------------");
 
         for (int i = 0; i < 9; i++) {
-            if (_boxScore.HomeBatters.TryGetValue(i, out var stats)) {
-                string playerName = _homeLineup[i].Name;
+            if (_result.BoxScore.HomeBatters.TryGetValue(i, out var stats)) {
+                string playerName = _result.HomeLineup.Batters[i].Name;
                 if (i == 8) playerName += " (DH)"; // Mark 9th batter as DH
 
                 sb.AppendLine($"{playerName,-NAME_WIDTH}{stats.PA,PA_WIDTH}{stats.AB,AB_WIDTH}{stats.H,H_WIDTH}{stats.RBI,RBI_WIDTH}{stats.BB,BB_WIDTH}{stats.K,K_WIDTH}{stats.HR,HR_WIDTH}");
@@ -247,7 +210,7 @@ public class GameReportFormatter {
         }
 
         // Totals
-        var homeTotals = _boxScore.HomeBatters.Values;
+        var homeTotals = _result.BoxScore.HomeBatters.Values;
         totalPA = homeTotals.Sum(b => b.PA);
         totalAB = homeTotals.Sum(b => b.AB);
         totalH = homeTotals.Sum(b => b.H);
@@ -266,10 +229,10 @@ public class GameReportFormatter {
         var sb = new StringBuilder();
 
         // CRITICAL: Cross-check data integrity - batting runs must equal opposing pitching runs
-        int homeBattingRuns = _lineScore.HomeTotal;
-        int awayBattingRuns = _lineScore.AwayTotal;
-        int homePitchingRuns = _boxScore.HomePitchers.Values.Sum(p => p.R);
-        int awayPitchingRuns = _boxScore.AwayPitchers.Values.Sum(p => p.R);
+        int homeBattingRuns = _result.LineScore.HomeTotal;
+        int awayBattingRuns = _result.LineScore.AwayTotal;
+        int homePitchingRuns = _result.BoxScore.HomePitchers.Values.Sum(p => p.R);
+        int awayPitchingRuns = _result.BoxScore.AwayPitchers.Values.Sum(p => p.R);
 
         if (homeBattingRuns != awayPitchingRuns) {
             throw new InvalidOperationException(
@@ -295,12 +258,12 @@ public class GameReportFormatter {
         const int HR_WIDTH = 4;
 
         // Away team pitching
-        string awayPitchingHeader = $"{_awayTeamName.ToUpper()} PITCHING".PadRight(NAME_WIDTH);
+        string awayPitchingHeader = $"{_result.Metadata.AwayTeamName.ToUpper()} PITCHING".PadRight(NAME_WIDTH);
         sb.AppendLine($"{awayPitchingHeader}{"IP",IP_WIDTH}{"BF",BF_WIDTH}{"H",H_WIDTH}{"R",R_WIDTH}{"ER",ER_WIDTH}{"BB",BB_WIDTH}{"K",K_WIDTH}{"HR",HR_WIDTH}");
         sb.AppendLine("-------------------------------------------------------------");
 
-        if (_boxScore.AwayPitchers.TryGetValue(0, out var awayPitcher)) {
-            string pitcherName = $"{_awayTeamName} P";
+        if (_result.BoxScore.AwayPitchers.TryGetValue(0, out var awayPitcher)) {
+            string pitcherName = $"{_result.Metadata.AwayTeamName} P";
             string ip = FormatInningsPitched(awayPitcher.OutsRecorded);
 
             sb.AppendLine($"{pitcherName,-NAME_WIDTH}{ip,IP_WIDTH}{awayPitcher.BF,BF_WIDTH}{awayPitcher.H,H_WIDTH}{awayPitcher.R,R_WIDTH}{awayPitcher.ER,ER_WIDTH}{awayPitcher.BB,BB_WIDTH}{awayPitcher.K,K_WIDTH}{awayPitcher.HR,HR_WIDTH}");
@@ -308,12 +271,12 @@ public class GameReportFormatter {
         sb.AppendLine();
 
         // Home team pitching
-        string homePitchingHeader = $"{_homeTeamName.ToUpper()} PITCHING".PadRight(NAME_WIDTH);
+        string homePitchingHeader = $"{_result.Metadata.HomeTeamName.ToUpper()} PITCHING".PadRight(NAME_WIDTH);
         sb.AppendLine($"{homePitchingHeader}{"IP",IP_WIDTH}{"BF",BF_WIDTH}{"H",H_WIDTH}{"R",R_WIDTH}{"ER",ER_WIDTH}{"BB",BB_WIDTH}{"K",K_WIDTH}{"HR",HR_WIDTH}");
         sb.AppendLine("-------------------------------------------------------------");
 
-        if (_boxScore.HomePitchers.TryGetValue(0, out var homePitcher)) {
-            string pitcherName = $"{_homeTeamName} P";
+        if (_result.BoxScore.HomePitchers.TryGetValue(0, out var homePitcher)) {
+            string pitcherName = $"{_result.Metadata.HomeTeamName} P";
             string ip = FormatInningsPitched(homePitcher.OutsRecorded);
 
             sb.AppendLine($"{pitcherName,-NAME_WIDTH}{ip,IP_WIDTH}{homePitcher.BF,BF_WIDTH}{homePitcher.H,H_WIDTH}{homePitcher.R,R_WIDTH}{homePitcher.ER,ER_WIDTH}{homePitcher.BB,BB_WIDTH}{homePitcher.K,K_WIDTH}{homePitcher.HR,HR_WIDTH}");
@@ -330,19 +293,8 @@ public class GameReportFormatter {
 
     private string FormatFooter() {
         var sb = new StringBuilder();
-        sb.AppendLine($"Seed: {_seed}");
-        sb.AppendLine($"LogHash: {CalculateLogHash()}");
+        sb.AppendLine($"Seed: {_result.Metadata.Seed}");
+        sb.AppendLine($"LogHash: {_result.LogHash}");
         return sb.ToString().TrimEnd();
-    }
-
-    private string CalculateLogHash() {
-        using var sha256 = SHA256.Create();
-
-        // Normalize: trim trailing spaces from each line, join with \n
-        var normalized = _playLog.Select(line => line.TrimEnd());
-        string combined = string.Join("\n", normalized);
-
-        byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 }

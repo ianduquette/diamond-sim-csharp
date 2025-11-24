@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace DiamondSim;
 
 /// <summary>
@@ -27,7 +25,8 @@ public static class Program {
                 seed
             );
 
-            var report = simulator.RunGame();
+            var result = simulator.RunGame();
+            var report = result.ToConsoleReport();
 
             // Print to STDOUT
             Console.WriteLine(report);
@@ -107,9 +106,6 @@ public static class Program {
         Console.Error.WriteLine("Optional arguments:");
         Console.Error.WriteLine("  --seed <int>     RNG seed for deterministic simulation");
         Console.Error.WriteLine("                   If omitted, a random seed will be generated");
-        Console.Error.WriteLine();
-        Console.Error.WriteLine("Game settings:");
-        Console.Error.WriteLine("  DH: ON | Extras: OFF (tie allowed)");
     }
 
     private sealed class ParsedArguments {

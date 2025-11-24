@@ -1,5 +1,3 @@
-using DiamondSim.Tests.TestHelpers;
-
 namespace DiamondSim.Tests.Model;
 
 /// <summary>

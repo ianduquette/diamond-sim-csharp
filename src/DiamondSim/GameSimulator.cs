@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace DiamondSim;
 
 /// <summary>
@@ -11,11 +9,10 @@ public class GameSimulator {
     private readonly string _awayTeamName;
     private readonly int _seed;
     private readonly IRandomSource _rng;
+    private readonly ILineupGenerator _lineupGenerator;
     private readonly AtBatSimulator _atBatSimulator;
     private readonly BaseRunnerAdvancement _baseRunnerAdvancement;
-    private readonly InningScorekeeper _scorekeeper;
-    // TODO: REFACTOR - Change to List<PlayLogEntry> when implementing GameResult (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
-    private readonly List<string> _playLog;
+    protected readonly InningScorekeeper _scorekeeper;
 
     private List<Batter> _homeLineup = new();
     private List<Batter> _awayLineup = new();
@@ -28,10 +25,12 @@ public class GameSimulator {
     /// <param name="homeTeamName">Name of the home team</param>
     /// <param name="awayTeamName">Name of the away team</param>
     /// <param name="seed">RNG seed for deterministic simulation</param>
-    public GameSimulator(string homeTeamName, string awayTeamName, int seed) {
+    /// <param name="lineupGenerator">Optional lineup generator (defaults to DefaultLineupGenerator)</param>
+    public GameSimulator(string homeTeamName, string awayTeamName, int seed, ILineupGenerator? lineupGenerator = null) {
         _homeTeamName = homeTeamName ?? throw new ArgumentNullException(nameof(homeTeamName));
         _awayTeamName = awayTeamName ?? throw new ArgumentNullException(nameof(awayTeamName));
         _seed = seed;
+        _lineupGenerator = lineupGenerator ?? new DefaultLineupGenerator();
 
         // Create single RNG instance for entire game
         _rng = new SeededRandom(seed);
@@ -40,20 +39,20 @@ public class GameSimulator {
         _atBatSimulator = new AtBatSimulator(_rng);
         _baseRunnerAdvancement = new BaseRunnerAdvancement();
         _scorekeeper = new InningScorekeeper();
-        _playLog = new List<string>();
     }
 
-    // TODO: REFACTOR - Return GameResult object instead of string (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
-    // Current implementation violates SRP by mixing simulation with formatting.
-    // Plan: Add RunGameV2() returning GameResult, make this method a wrapper calling RunGameV2().ToConsoleReport()
     /// <summary>
-    /// Runs a complete game simulation and returns the formatted report.
+    /// Runs a complete game simulation and returns a rich GameResult object.
     /// </summary>
-    /// <returns>Complete game report as text</returns>
-    public string RunGame() {
-        // PreGame: Generate lineups and initialize state
-        _homeLineup = GenerateLineup(_homeTeamName);
-        _awayLineup = GenerateLineup(_awayTeamName);
+    /// <returns>Complete game result with all data</returns>
+    public GameResult RunGame() {
+        return RunGameInternal();
+    }
+
+    private GameResult RunGameInternal() {
+        // PreGame: Generate lineups using injected generator
+        _homeLineup = _lineupGenerator.GenerateLineup(_homeTeamName, _rng);
+        _awayLineup = _lineupGenerator.GenerateLineup(_awayTeamName, _rng);
         _homePitcher = new Pitcher($"{_homeTeamName} P", PitcherRatings.Average);
         _awayPitcher = new Pitcher($"{_awayTeamName} P", PitcherRatings.Average);
 
@@ -76,33 +75,41 @@ public class GameSimulator {
             isFinal: false
         );
 
-        // Main game loop: InningInProgress until GameComplete
+        // Main game loop: simulate until game is final
+        var playLogEntries = new List<PlayLogEntry>();
         while (!state.IsFinal) {
-            state = SimulatePlateAppearance(state);
+            state = SimulatePlateAppearance(state, playLogEntries);
         }
 
-        // GameComplete: Format and return report
-        var formatter = new GameReportFormatter(
-            _homeTeamName,
-            _awayTeamName,
-            _seed,
-            DateTime.Now,
-            _scorekeeper.LineScore,
-            _scorekeeper.BoxScore,
-            _playLog,
-            state,
-            _scorekeeper,
-            _homeLineup,
-            _awayLineup
+        // Build GameResult with all data
+        var metadata = new GameMetadata(
+            homeTeamName: _homeTeamName,
+            awayTeamName: _awayTeamName,
+            seed: _seed,
+            timestamp: DateTime.Now
         );
 
-        return formatter.FormatReport();
+        var homeLineup = new TeamLineup(_homeTeamName, _homeLineup.AsReadOnly());
+        var awayLineup = new TeamLineup(_awayTeamName, _awayLineup.AsReadOnly());
+
+        return new GameResult(
+            metadata: metadata,
+            boxScore: _scorekeeper.BoxScore,
+            lineScore: _scorekeeper.LineScore,
+            playLog: playLogEntries.AsReadOnly(),
+            finalState: state,
+            homeLineup: homeLineup,
+            awayLineup: awayLineup,
+            homeTotalLOB: _scorekeeper.HomeTotalLOB,
+            awayTotalLOB: _scorekeeper.AwayTotalLOB
+        );
     }
 
     /// <summary>
-    /// Simulates a single plate appearance and updates game state.
+    /// Simulates a single plate appearance (creates PlayLogEntry objects).
+    /// Made virtual to allow test subclasses to inject controlled data.
     /// </summary>
-    private GameState SimulatePlateAppearance(GameState state) {
+    protected virtual GameState SimulatePlateAppearance(GameState state, List<PlayLogEntry> playLogEntries) {
         // 1. Get current batter and pitcher
         var batter = GetCurrentBatter(state);
         var pitcher = GetCurrentPitcher(state);
@@ -120,8 +127,6 @@ public class GameSimulator {
                 _rng
             );
 
-            // Determine BIP type for runner advancement logic
-            // Distribution: ~50% ground balls, ~40% fly balls, ~10% line drives
             bipType = DetermineBipType();
         }
 
@@ -135,49 +140,23 @@ public class GameSimulator {
             _rng
         );
 
-        // 5. Apply to game state (ONLY mutation point - includes clamp, LOB=0)
+        // 5. Apply to game state
         var applyResult = _scorekeeper.ApplyPlateAppearance(state, resolution);
 
-        // 6. Build play log entry AFTER applying (so we know walk-off status and final outs)
-        string playLogEntry = BuildPlayLogEntry(
-            state.Inning,
-            state.Half,
-            batter,
-            GetTeamName(state.Defense), // Use defense (pitching team) name
-            resolution,
-            applyResult.IsWalkoff,
-            applyResult.OutsAfter
+        // 6. Create PlayLogEntry object
+        var playLogEntry = new PlayLogEntry(
+            inning: state.Inning,
+            half: state.Half,
+            batterName: batter.Name,
+            pitchingTeamName: GetTeamName(state.Defense),
+            resolution: resolution,
+            isWalkoff: applyResult.IsWalkoff,
+            outsAfter: applyResult.OutsAfter
         );
-        _playLog.Add(playLogEntry);
+        playLogEntries.Add(playLogEntry);
 
         // 7. Return updated state for next iteration
         return applyResult.StateAfter;
-    }
-
-    /// <summary>
-    /// Generates a lineup of 9 batters for the specified team.
-    /// </summary>
-    private List<Batter> GenerateLineup(string teamName) {
-        var batters = new List<Batter>();
-        for (int i = 1; i <= 9; i++) {
-            batters.Add(new Batter($"{teamName} {i}", BatterRatings.Average));
-        }
-
-        // Randomize order using Fisher-Yates shuffle with RNG
-        Shuffle(batters);
-
-        return batters;
-    }
-
-    /// <summary>
-    /// Fisher-Yates shuffle using the game's RNG for determinism.
-    /// </summary>
-    private void Shuffle<T>(List<T> list) {
-        int n = list.Count;
-        for (int i = n - 1; i > 0; i--) {
-            int j = (int)(_rng.NextDouble() * (i + 1));
-            (list[i], list[j]) = (list[j], list[i]);
-        }
     }
 
     /// <summary>
@@ -203,75 +182,6 @@ public class GameSimulator {
         return team == Team.Home ? _homeTeamName : _awayTeamName;
     }
 
-    // TODO: REFACTOR - This method should create PlayLogEntry objects instead of strings (see .prd/20251123_02_Refactor-GameSimulator-Return-Object.md)
-    // The formatting logic should move to PlayLogEntry.ToDisplayString()
-    /// <summary>
-    /// Builds a play-by-play log entry for the plate appearance.
-    /// </summary>
-    private string BuildPlayLogEntry(
-        int inning,
-        InningHalf half,
-        Batter batter,
-        string pitchingTeamName,
-        PaResolution resolution,
-        bool isWalkoff,
-        int outsAfter) {
-
-        string halfStr = half == InningHalf.Top ? "Top" : "Bot";
-        string batterName = batter.Name;
-
-        // Walk-off prefix (now we know for sure)
-        string prefix = isWalkoff ? PlayByPlayPhrases.WalkoffPrefix : "";
-
-        // Format outcome using OutcomeTag for easy switching
-        string outcome = FormatOutcome(resolution);
-
-        // Format runner movements from resolution.Moves
-        string baseRunners = FormatRunnerMoves(resolution.Moves);
-
-        // Outs phrase using outsAfter (not pre-play outs)
-        string outsPhrase = resolution.OutsAdded > 0
-            ? " " + PlayByPlayPhrases.OutsPhrase(outsAfter)
-            : "";
-
-        // Build complete log entry
-        var sb = new StringBuilder();
-        sb.Append($"[{halfStr} {inning}] {batterName} vs {pitchingTeamName} P — {prefix}{outcome}.");
-
-        if (!string.IsNullOrEmpty(baseRunners)) {
-            sb.Append($" {baseRunners}.");
-        }
-
-        if (!string.IsNullOrEmpty(outsPhrase)) {
-            sb.Append(outsPhrase);
-        }
-
-        return sb.ToString().TrimEnd();
-    }
-
-    /// <summary>
-    /// Formats the outcome description based on the resolution tag.
-    /// </summary>
-    private string FormatOutcome(PaResolution resolution) {
-        // Determine field for hits (simplified: random selection)
-        string field = GetRandomField();
-
-        return resolution.Tag switch {
-            OutcomeTag.K => PlayByPlayPhrases.Strikeout(looking: _rng.NextDouble() < 0.5),
-            OutcomeTag.BB => PlayByPlayPhrases.Walk,
-            OutcomeTag.HBP => PlayByPlayPhrases.HitByPitch,
-            OutcomeTag.Single => PlayByPlayPhrases.Single(field),
-            OutcomeTag.Double => PlayByPlayPhrases.Double(field),
-            OutcomeTag.Triple => PlayByPlayPhrases.Triple(field),
-            OutcomeTag.HR => PlayByPlayPhrases.HomeRun(field),
-            OutcomeTag.ROE => PlayByPlayPhrases.ReachOnError(GetRandomFieldingPosition()),
-            OutcomeTag.SF => PlayByPlayPhrases.SacrificeFly(field),
-            OutcomeTag.DP => PlayByPlayPhrases.GroundsIntoDP("6-4-3"), // Standard DP
-            OutcomeTag.InPlayOut => FormatRegularOut(),
-            _ => "Unknown outcome"
-        };
-    }
-
     /// <summary>
     /// Determines the type of batted ball for runner advancement logic.
     /// Distribution: ~50% ground balls, ~40% fly balls, ~10% line drives
@@ -287,91 +197,6 @@ public class GameSimulator {
         else {
             return BipType.LineDrive;
         }
-    }
-
-    /// <summary>
-    /// Formats a regular out (groundout, flyout, or lineout).
-    /// </summary>
-    private string FormatRegularOut() {
-        double roll = _rng.NextDouble();
-        if (roll < 0.5) {
-            // Groundout
-            return PlayByPlayPhrases.Groundout(GetRandomGroundoutPositions());
-        }
-        else if (roll < 0.9) {
-            // Flyout
-            return PlayByPlayPhrases.Flyout(GetRandomField());
-        }
-        else {
-            // Lineout
-            return PlayByPlayPhrases.Lineout(GetRandomInfieldPosition());
-        }
-    }
-
-    /// <summary>
-    /// Gets a random outfield position (LF, CF, RF).
-    /// </summary>
-    private string GetRandomField() {
-        double roll = _rng.NextDouble();
-        if (roll < 0.33) return "LF";
-        if (roll < 0.67) return "CF";
-        return "RF";
-    }
-
-    /// <summary>
-    /// Gets random groundout fielding positions.
-    /// </summary>
-    private string GetRandomGroundoutPositions() {
-        double roll = _rng.NextDouble();
-        if (roll < 0.4) return "6-3"; // SS to 1B
-        if (roll < 0.7) return "4-3"; // 2B to 1B
-        if (roll < 0.9) return "5-3"; // 3B to 1B
-        return "3-1"; // 1B unassisted
-    }
-
-    /// <summary>
-    /// Gets a random infield position for lineouts.
-    /// </summary>
-    private string GetRandomInfieldPosition() {
-        double roll = _rng.NextDouble();
-        if (roll < 0.25) return "SS";
-        if (roll < 0.5) return "2B";
-        if (roll < 0.75) return "3B";
-        return "1B";
-    }
-
-    /// <summary>
-    /// Gets a random fielding position (1-9) for error distribution.
-    /// </summary>
-    private int GetRandomFieldingPosition() {
-        return (int)(_rng.NextDouble() * 9) + 1; // Returns 1-9
-    }
-
-    /// <summary>
-    /// Formats runner movements from the resolution.
-    /// </summary>
-    private string FormatRunnerMoves(IReadOnlyList<RunnerMove>? moves) {
-        if (moves == null || moves.Count == 0) {
-            return "";
-        }
-
-        var parts = new List<string>();
-        foreach (var move in moves) {
-            // Skip batter's routine advancement to first on single, etc.
-            if (move.FromBase == 0 && !move.Scored) {
-                continue;
-            }
-
-            if (move.Scored) {
-                string runnerLabel = move.FromBase == 0 ? "Batter" : $"R{move.FromBase}";
-                parts.Add($"{runnerLabel} scores");
-            }
-            else if (move.FromBase > 0) {
-                parts.Add($"R{move.FromBase} to {move.ToBase}B");
-            }
-        }
-
-        return parts.Count > 0 ? string.Join(", ", parts) : "";
     }
 }
 

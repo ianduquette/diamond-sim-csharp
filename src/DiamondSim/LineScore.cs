@@ -83,20 +83,21 @@ public class LineScore {
     /// <param name="inning">The inning number (1-based).</param>
     /// <returns>A string representation: runs as number, "X" for skipped, or "-" for not played.</returns>
     public string GetInningDisplay(Team team, int inning) {
-        int runs = GetInningRuns(team, inning);
+        var runs = GetInningRuns(team, inning);
 
-        if (runs == -1) {
-            // Check if this is a skipped inning (stored as -1) vs not yet played
-            var innings = team == Team.Away ? AwayInnings : HomeInnings;
-            int index = inning - 1;
-
-            if (index >= 0 && index < innings.Count && innings[index] == -1) {
-                return "X"; // Skipped inning
-            }
-            return "-"; // Not yet played
+        if (runs != -1) {
+            return runs.ToString();
         }
 
-        return runs.ToString();
+        // Check if this is a skipped inning (stored as -1) vs not yet played
+        var innings = team == Team.Away ? AwayInnings : HomeInnings;
+        var index = inning - 1;
+
+        if (index >= 0 && index < innings.Count && innings[index] == -1) {
+            return "X"; // Skipped inning
+        }
+        return "-"; // Not yet played
+
     }
 
     /// <summary>
